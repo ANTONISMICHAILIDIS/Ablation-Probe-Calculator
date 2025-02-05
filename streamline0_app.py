@@ -205,9 +205,12 @@ def suggest_probes(body_system, ablation_type, tumor_length, tumor_width, tumor_
     return ["No suitable probe found"]
 
 def main():
-    st.set_page_config(page_title="Ablation Probe Calculator", layout="centered")
+    st.set_page_config(page_title="Ablation Probe and Protocol Calculator", layout="centered")
     
-    st.title("Ablation Probe Calculator")
+    # Title and Caption
+    st.title("Ablation Probe and Protocol Calculator")
+    st.caption("Created by Michailidis A. for free use")
+    
     st.markdown("Select the clinical parameters to receive an optimal ablation probe recommendation and review research-based protocols.")
     
     # Sidebar for user input
