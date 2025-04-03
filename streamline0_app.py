@@ -1,14 +1,16 @@
 from flask import Flask, render_template_string, request
+import math
 
 app = Flask(__name__)
 
-# HTML template for the input form
+# --- HTML Templates ---
+
 form_template = """
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Renal Cryoablation Predictor</title>
+  <title>Renal Cryoablation Probe Calculator</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     label { display: block; margin-top: 10px; }
@@ -17,69 +19,65 @@ form_template = """
   </style>
 </head>
 <body>
-  <h1>Renal Cryoablation Predictor</h1>
-  
-  <h2>Step 1: Calculate RENAL Nephrometry Score</h2>
+  <h1>Renal Cryoablation Probe Calculator</h1>
+  <p>This tool calculates the recommended cryoablation probe configuration and predicts the resulting ice‐ball dimensions based on tumor size, RENAL score, and kidney pole location.</p>
   <form method="POST" action="/result">
+    <h2>1. Tumor Characteristics</h2>
     <div class="section">
-      <label for="radius">Radius (maximum diameter in cm):</label>
+      <label for="mass_x">Mass Size X (cm):</label>
+      <input type="number" step="0.1" name="mass_x" id="mass_x" required>
+    </div>
+    <div class="section">
+      <label for="mass_y">Mass Size Y (cm):</label>
+      <input type="number" step="0.1" name="mass_y" id="mass_y" required>
+    </div>
+    <div class="section">
+      <label for="mass_z">Mass Size Z (cm):</label>
+      <input type="number" step="0.1" name="mass_z" id="mass_z" required>
+    </div>
+    <h2>2. RENAL Nephrometry Score Parameters</h2>
+    <div class="section">
+      <label for="radius">Radius (max diameter):</label>
       <select name="radius" id="radius" required>
         <option value="1">≤4 cm (1 point)</option>
         <option value="2">4-7 cm (2 points)</option>
         <option value="3">≥7 cm (3 points)</option>
       </select>
     </div>
-    
     <div class="section">
-      <label for="exophytic">Exophytic Tumor Location:</label>
+      <label for="exophytic">Exophytic Component:</label>
       <select name="exophytic" id="exophytic" required>
         <option value="1">≥50% exophytic (1 point)</option>
         <option value="2"><50% exophytic (2 points)</option>
         <option value="3">100% endophytic (3 points)</option>
       </select>
     </div>
-    
     <div class="section">
-      <label for="nearness">Nearness to Collecting System (in mm):</label>
+      <label for="nearness">Nearness to Collecting System (mm):</label>
       <select name="nearness" id="nearness" required>
         <option value="1">≥7 mm (1 point)</option>
         <option value="2">4-7 mm (2 points)</option>
         <option value="3">≤4 mm (3 points)</option>
       </select>
     </div>
-    
     <div class="section">
-      <label for="location_pole">Location Relative to Renal Poles:</label>
-      <select name="location_pole" id="location_pole" required>
-        <option value="1">Entirely below or above the pole (1 point)</option>
+      <label for="pole_rel">Location Relative to Renal Poles:</label>
+      <select name="pole_rel" id="pole_rel" required>
+        <option value="1">Entirely above/below pole (1 point)</option>
         <option value="2">Mass crosses the polar line (2 points)</option>
-        <option value="3">>50% crosses the polar line, is entirely between, or crosses the midline (3 points)</option>
+        <option value="3">>50% crosses polar line/crosses midline (3 points)</option>
       </select>
     </div>
-    
     <div class="section">
-      <label for="artery">Does the mass touch the main renal artery or vein? (suffix "h")</label>
+      <label for="artery">Touches Main Renal Vessels?</label>
       <select name="artery" id="artery" required>
-        <option value="0">No (0 points)</option>
-        <option value="1">Yes (add "h")</option>
+        <option value="0">No</option>
+        <option value="1">Yes (adds "h" suffix)</option>
       </select>
     </div>
-    
-    <h2>Step 2: Enter Mass and Additional Data</h2>
+    <h2>3. Additional Details</h2>
     <div class="section">
-      <label for="mass_x">Mass Size X (cm):</label>
-      <input type="text" name="mass_x" id="mass_x" required>
-    </div>
-    <div class="section">
-      <label for="mass_y">Mass Size Y (cm):</label>
-      <input type="text" name="mass_y" id="mass_y" required>
-    </div>
-    <div class="section">
-      <label for="mass_z">Mass Size Z (cm):</label>
-      <input type="text" name="mass_z" id="mass_z" required>
-    </div>
-    <div class="section">
-      <label for="pole">Renal Pole Location:</label>
+      <label for="pole">Renal Pole (for hydrodissection considerations):</label>
       <select name="pole" id="pole" required>
         <option value="upper">Upper Pole</option>
         <option value="mid">Mid Pole</option>
@@ -91,15 +89,14 @@ form_template = """
       <input type="text" name="cancer_type" id="cancer_type" required>
     </div>
     <div class="section">
-      <label for="probe_config">Preferred Cryoablation Probe Configuration:</label>
-      <select name="probe_config" id="probe_config" required>
+      <label for="probe_type">Preferred Probe Type:</label>
+      <select name="probe_type" id="probe_type" required>
         <option value="rod">Rod-Type</option>
         <option value="sphere">Sphere-Type</option>
-        <option value="force">Force (hybrid)</option>
+        <option value="force">Force-Type</option>
         <option value="mixed">Mixed (e.g., 2 ROD + 1 SPHERE)</option>
       </select>
     </div>
-    
     <div class="section">
       <button type="submit">Calculate Prediction</button>
     </div>
@@ -108,7 +105,6 @@ form_template = """
 </html>
 """
 
-# HTML template for the result page
 result_template = """
 <!doctype html>
 <html lang="en">
@@ -123,14 +119,14 @@ result_template = """
 <body>
   <h1>Prediction Result</h1>
   <div class="result">
-    <p><strong>Calculated RENAL Score:</strong> {{ renal_score }} {% if has_h %} (with "h") {% endif %}</p>
+    <p><strong>Calculated RENAL Score:</strong> {{ renal_score }} {% if has_h %}(with "h"){% endif %}</p>
     <p><strong>Complexity:</strong> {{ complexity }}</p>
-    <p><strong>Mass Size (cm):</strong> {{ mass_x }} x {{ mass_y }} x {{ mass_z }}</p>
-    <p><strong>Renal Pole Location:</strong> {{ pole }}</p>
+    <p><strong>Mass Size (cm):</strong> {{ mass_x }} × {{ mass_y }} × {{ mass_z }}</p>
+    <p><strong>Renal Pole:</strong> {{ pole }}</p>
     <p><strong>Cancer Type:</strong> {{ cancer_type }}</p>
     <hr>
     <p><strong>Recommended Probe Configuration:</strong> {{ probe_configuration }}</p>
-    <p><strong>Expected Ice-ball Size (cm):</strong> {{ iceball_x }} x {{ iceball_y }} x {{ iceball_z }}</p>
+    <p><strong>Expected Ice-ball Dimensions (cm):</strong> {{ iceball_x }} × {{ iceball_y }} × {{ iceball_z }}</p>
     <p><strong>Hydrodissection:</strong> {{ hydrodissection }}</p>
     <p><strong>Expected Complications:</strong> {{ complications }}</p>
   </div>
@@ -139,17 +135,13 @@ result_template = """
 </html>
 """
 
-# Function to calculate the RENAL score from input values
-def calculate_renal_score(radius, exophytic, nearness, pole_location, artery):
-    # radius: 1, 2, or 3 points
-    # exophytic: 1, 2, or 3 points
-    # nearness: 1, 2, or 3 points
-    # pole location: 1, 2, or 3 points
-    # artery: 0 or 1 (if touches, we add an "h" flag, but not counted in score)
-    score = int(radius) + int(exophytic) + int(nearness) + int(pole_location)
+# --- Calculation Functions ---
+
+def calculate_renal_score(radius, exophytic, nearness, pole_rel, artery):
+    # Sum up the points (radius, exophytic, nearness, and location relative to poles)
+    score = int(radius) + int(exophytic) + int(nearness) + int(pole_rel)
     return score
 
-# Function to classify complexity based on RENAL score
 def classify_complexity(renal_score):
     if renal_score <= 6:
         return "Low Complexity (RENAL 4-6)"
@@ -158,113 +150,88 @@ def classify_complexity(renal_score):
     else:
         return "High Complexity (RENAL 10-12)"
 
-# Function to predict cryoablation parameters for renal masses
-def predict_parameters(mass_x, mass_y, mass_z, renal_score, pole, cancer_type, probe_config):
-    # For simplicity, we use a basic rule-based approach to choose probe configuration and estimate ice-ball size.
-    # Note: In a real application, these rules would be based on extensive data and validated models.
-    
-    # Example rules:
-    # For sphere-type: assume each sphere produces a 4.0 cm ice-ball diameter.
-    # For rod-type: assume each rod produces an elliptical ice-ball with baseline 1.4 x 2.6 x 2.8 cm (for single probe).
-    # For mixed (2 ROD + 1 SPHERE), we assume a combination result.
-    # Also, if the pole is "upper", we note that hydrodissection is less feasible and complication risk (e.g., pneumothorax) is higher.
-    
-    # For demonstration, we define:
-    if probe_config == "sphere":
-        # Single sphere values scaled by number of probes (assuming linear arrangement for 1-2, triangular for 3, etc.)
-        # We'll use a simple mapping: for 1 probe, use the baseline; for 2 probes, add 1.0 cm to each dimension; for 3 probes, add 2.0 cm, etc.
-        # Here, we assume the number of probes required is determined by renal score: lower score gets fewer probes.
-        if renal_score <= 6:
-            n = 1
-        elif 7 <= renal_score <= 9:
-            n = 2
-        else:
-            n = 3
-        
-        base_diam = 4.0  # cm (spherical diameter)
-        spacing = 1.0  # cm
-        margin = 0.75  # cm per side
-        
-        # For a linear arrangement: Overall Diameter = (n-1)*spacing + n*base_diam + 2*margin.
-        overall_diam = (n - 1) * spacing + n * base_diam + 2 * margin
-        
-        probe_configuration = f"{n} SPHERE"
-        iceball_x = iceball_y = iceball_z = round(overall_diam, 1)
-    
-    elif probe_config == "rod":
-        # For rod-type, assume baseline dimensions (for 1 probe): 1.4 x 2.6 x 2.8 cm.
-        # We'll decide n based on renal score as above.
-        if renal_score <= 6:
-            n = 1
-        elif 7 <= renal_score <= 9:
-            n = 2
-        else:
-            n = 3
-        
-        # For linear arrangement along the largest dimension:
-        base_x, base_y, base_z = 1.4, 2.6, 2.8  # cm for 1 probe
-        spacing = 1.0
-        margin = 0.75
-        
-        # For each axis, predicted dimension = (n-1)*spacing + n*(base dimension) + 2*margin.
-        iceball_x = round((n - 1) * spacing + n * base_x + 2 * margin, 1)
-        iceball_y = round((n - 1) * spacing + n * base_y + 2 * margin, 1)
-        iceball_z = round((n - 1) * spacing + n * base_z + 2 * margin, 1)
-        probe_configuration = f"{n} ROD"
-    
-    elif probe_config == "force":
-        # Force probes assumed to have larger ablation effect; use baseline 5.0 x 4.0 x 4.8 cm for 1 probe.
-        if renal_score <= 6:
-            n = 1
-        elif 7 <= renal_score <= 9:
-            n = 2
-        else:
-            n = 3
-        
-        base_x, base_y, base_z = 5.0, 4.0, 4.8
-        spacing = 1.0
-        margin = 0.75
-        iceball_x = round((n - 1) * spacing + n * base_x + 2 * margin, 1)
-        iceball_y = round((n - 1) * spacing + n * base_y + 2 * margin, 1)
-        iceball_z = round((n - 1) * spacing + n * base_z + 2 * margin, 1)
-        probe_configuration = f"{n} FORCE"
-    
-    elif probe_config == "mixed":
-        # For a mixed configuration such as "2 ROD + 1 SPHERE" (total 3 probes),
-        # we can average the dimensions from the rod and sphere predictions.
-        n = 3
-        # Assume 2 rod probes and 1 sphere probe.
-        # Use previous baseline for rod and sphere:
-        rod_dims = [1.4, 2.6, 2.8]  # for rod (per probe)
-        sphere_diam = 4.0
-        # Calculate average per axis as weighted average:
-        # For simplicity, we average the sphere value with the rod value for the two rod probes.
-        avg_x = (2 * rod_dims[0] + sphere_diam) / 3
-        avg_y = (2 * rod_dims[1] + sphere_diam) / 3
-        avg_z = (2 * rod_dims[2] + sphere_diam) / 3
-        spacing = 1.0
-        margin = 0.75
-        iceball_x = round((n - 1) * spacing + n * avg_x + 2 * margin, 1)
-        iceball_y = round((n - 1) * spacing + n * avg_y + 2 * margin, 1)
-        iceball_z = round((n - 1) * spacing + n * avg_z + 2 * margin, 1)
-        probe_configuration = "2 ROD + 1 SPHERE"
-    
-    # Based on pole location: if "upper", assume no hydrodissection possible and higher risk of pneumothorax.
-    if pole.lower() == "upper":
-        hydrodissection = "Not possible"
-        complications = "Pneumothorax risk"
+def recommend_probe_count(max_mass):
+    # A simple rule: 
+    # If maximum dimension <= 3 cm -> 1 probe
+    # >3 and <= 4 -> 2 probes
+    # >4 -> 3 probes
+    if max_mass <= 3:
+        return 1
+    elif max_mass <= 4:
+        return 2
     else:
-        hydrodissection = "Recommended"
-        complications = "Standard risk"
-    
-    # For demonstration, let’s adjust the prediction if the cancer type is "clear cell"
-    if cancer_type.lower() == "clear cell":
-        # For example, assume clear cell histology slightly increases the ablation zone need by 10%
-        iceball_x = round(iceball_x * 1.1, 1)
-        iceball_y = round(iceball_y * 1.1, 1)
-        iceball_z = round(iceball_z * 1.1, 1)
-    
-    return probe_configuration, iceball_x, iceball_y, iceball_z, hydrodissection, complications
+        return 3
+
+def predict_iceball_size(probe_type, probe_count, config_type):
+    # Define baseline dimensions for each probe type (in cm)
+    # These are for a single probe (intrinsic iceball produced)
+    baseline = {}
+    if probe_type == "sphere":
+        baseline = {"x": 1.2, "y": 1.8, "z": 2.0}  # approximate spherical probe
+    elif probe_type == "rod":
+        baseline = {"x": 1.4, "y": 2.6, "z": 2.8}  # elliptical probe
+    elif probe_type == "force":
+        baseline = {"x": 5.0, "y": 4.0, "z": 4.8}  # larger ablation, for demonstration
+    elif probe_type == "mixed":
+        # For mixed, assume weighted average of 2 rod and 1 sphere
+        baseline = {
+            "x": (2*1.4 + 1.2)/3,
+            "y": (2*2.6 + 1.8)/3,
+            "z": (2*2.8 + 2.0)/3
+        }
+    # Define spacing between probes and safety margin (in cm)
+    spacing = 1.0
+    margin = 0.5  # per side (total addition = 1.0 cm)
+
+    # Calculate linear overall dimension for each axis:
+    # overall_axis = probe_count * baseline + (probe_count - 1) * spacing + 2 * margin
+    overall = {}
+    for axis in ["x", "y", "z"]:
+        overall[axis] = probe_count * baseline[axis] + (probe_count - 1) * spacing + 2 * margin
+
+    # Adjust for configuration shape
+    # For linear (if probe_count in [1,2]): factor = 1.0
+    # For triangle (3 probes): factor = 0.9
+    # For square (4 probes): factor = 0.85
+    # For pentagon (5): factor = 0.8; for hexagon (6): factor = 0.75
+    config_factors = {1: 1.0, 2: 1.0, 3: 0.9, 4: 0.85, 5: 0.8, 6: 0.75}
+    factor = config_factors.get(probe_count, 1.0)
+    overall = {axis: round(val * factor, 1) for axis, val in overall.items()}
+
+    # For our prediction, let the maximum dimension be the "length" (largest among x,y,z)
+    max_dimension = max(overall.values())
+    return overall["x"], overall["y"], overall["z"], max_dimension
+
+def get_hydrodissection_and_complications(pole):
+    if pole.lower() == "upper":
+        return "Not possible", "High risk: Pneumothorax"
+    else:
+        return "Recommended", "Standard risk"
+
+def get_protocol(probe_type, probe_count, max_dimension):
+    # A simple rule for protocol details
+    if probe_type == "rod":
+        freeze_time = 10
+    elif probe_type == "sphere":
+        freeze_time = 8
+    elif probe_type == "force":
+        freeze_time = 12
+    else:
+        freeze_time = 10
+    return {
+        "description": f"Cryoablation using {probe_count} {probe_type.upper()} probe{'s' if probe_count>1 else ''}.",
+        "technicalParameters": f"Double freeze-thaw cycle; Freeze: {freeze_time} minutes, Thaw: 8 minutes, Freeze: {freeze_time} minutes, Final Thaw: 3 minutes",
+        "duration": f"Approximately {2*freeze_time + 11} minutes total"
+    }
+
+def recommend_probe_configuration(mass_x, mass_y, mass_z, renal_score):
+    # Use the maximum of the mass dimensions to determine probe count
+    max_mass = max(mass_x, mass_y, mass_z)
+    # A simple rule based on our demo:
+    probe_count = recommend_probe_count(max_mass)
+    return probe_count
+
+# --- Flask Routes ---
 
 @app.route("/", methods=["GET"])
 def index():
@@ -272,27 +239,42 @@ def index():
 
 @app.route("/result", methods=["POST"])
 def result():
-    # Get RENAL inputs and calculate score
+    # Get tumor dimensions
+    try:
+        mass_x = float(request.form.get("mass_x"))
+        mass_y = float(request.form.get("mass_y"))
+        mass_z = float(request.form.get("mass_z"))
+    except:
+        mass_x = mass_y = mass_z = 0.0
+
+    # RENAL score parameters
     radius = request.form.get("radius")
     exophytic = request.form.get("exophytic")
     nearness = request.form.get("nearness")
-    location_pole = request.form.get("location_pole")
+    pole_rel = request.form.get("pole_rel")
     artery = request.form.get("artery")
-    renal_score = calculate_renal_score(radius, exophytic, nearness, location_pole, artery)
+    renal_score = calculate_renal_score(radius, exophytic, nearness, pole_rel, artery)
     complexity = classify_complexity(renal_score)
-    
-    # Get mass size and other details
-    mass_x = float(request.form.get("mass_x"))
-    mass_y = float(request.form.get("mass_y"))
-    mass_z = float(request.form.get("mass_z"))
+
+    # Additional details
     pole = request.form.get("pole")
     cancer_type = request.form.get("cancer_type")
-    probe_config = request.form.get("probe_config")
+    probe_type = request.form.get("probe_type")  # "rod", "sphere", "force", "mixed"
     
-    # Get predicted parameters
-    probe_configuration, iceball_x, iceball_y, iceball_z, hydrodissection, complications = predict_parameters(
-        mass_x, mass_y, mass_z, renal_score, pole, cancer_type, probe_config
-    )
+    # Recommend probe count based on mass size and renal score
+    recommended_probe_count = recommend_probe_configuration(mass_x, mass_y, mass_z, renal_score)
+    
+    # Predict iceball size using our model
+    iceball_x, iceball_y, iceball_z, max_dimension = predict_iceball_size(probe_type, recommended_probe_count, config_type="linear")
+    
+    # Get hydrodissection and complications recommendations based on renal pole
+    hydrodissection, complications = get_hydrodissection_and_complications(pole)
+    
+    # Get ablation protocol details
+    protocol = get_protocol(probe_type, recommended_probe_count, max_dimension)
+    
+    # Build probe configuration string (e.g., "3 ROD" for rod-type)
+    probe_configuration = f"{recommended_probe_count} {probe_type.upper()}"
     
     return render_template_string(result_template,
                                   renal_score=renal_score,
