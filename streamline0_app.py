@@ -1,549 +1,314 @@
-import streamlit as st
-import pandas as pd
+from flask import Flask, render_template_string, request
 
-# ===========================================
-# 1. Data: Probe Characteristics for Tumor Ablation
-# ===========================================
-ablation_data = {
-    "Liver": {
-        "Microwave Ablation": [
-            {"name": "Emprint™", "size": "Water-cooled", "power": "40W", "active_tip": "Variable"},
-            {"name": "NeuWave™", "size": "Standard", "power": "30-60W", "active_tip": "Variable"},
-            {"name": "Acculis MTA", "size": "Flexible", "power": "40-60W", "active_tip": "Variable"}
-        ],
-        "Radiofrequency Ablation": [
-            {"name": "Cool-tip™", "size": "17-gauge", "active_tip": "2-3 cm"},
-            {"name": "RITA Starburst®", "size": "Deployable array", "active_tip": "Variable"}
-        ],
-        "Cryoablation": [
-            {"name": "Visual-ICE™", "iceball": (3.5, 5), "shape": "Elliptical"},
-            {"name": "CryoCare®", "iceball": (3.5, 5), "shape": "Elliptical"}
-        ],
-        "IRE": [
-            {"name": "NanoKnife", "electrodes": 2, "voltage": "1500-3000 V", "spacing": "1.5-2 cm", "protocol": "90 pulses"}
-        ]
-    },
-    "Lung": {
-        "Microwave Ablation": [
-            {"name": "Lung Emprint™", "size": "Adapted for lung", "power": "30-60W", "active_tip": "Variable"}
-        ],
-        "Radiofrequency Ablation": [
-            {"name": "LeVeen®", "size": "17-gauge", "active_tip": "2-3 cm"}
-        ],
-        "Cryoablation": [
-            {"name": "CryoCare Touch™", "iceball": (3.0, 4.5), "shape": "Elliptical"}
-        ],
-        "IRE": [
-            {"name": "NanoKnife", "electrodes": 2, "voltage": "1500-3000 V", "spacing": "1.5-2 cm", "protocol": "90 pulses"}
-        ]
-    },
-    "Renal": {
-        "Radiofrequency Ablation": [
-            {"name": "Cool-tip™ RF", "size": "17-gauge", "active_tip": "2-3 cm"},
-            {"name": "StarBurst®", "size": "Deployable array", "active_tip": "Variable"}
-        ],
-        "Microwave Ablation": [
-            {"name": "Acculis MTA", "size": "Flexible", "power": "40-60W", "active_tip": "Variable"}
-        ],
-        "Cryoablation": [
-            {"name": "Visual-ICE®", "iceball": (3.5, 5), "shape": "Elliptical"},
-            {"name": "CryoCare Touch®", "iceball": (3.5, 5), "shape": "Elliptical"}
-        ],
-        "IRE": [
-            {"name": "NanoKnife", "electrodes": 2, "voltage": "1500-3000 V", "spacing": "1.5-2 cm", "protocol": "90 pulses"}
-        ]
-    },
-    "Bone": {
-        "Radiofrequency Ablation": [
-            {"name": "LeVeen®", "size": "Variable", "active_tip": "2-3 cm"},
-            {"name": "STAR®", "size": "Deployable array", "active_tip": "Variable"},
-            {"name": "Articulated Bipolar Probe", "size": "Specialized", "active_tip": "Controlled"}
-        ],
-        "Cryoablation": [
-            {"name": "Visual-ICE®", "iceball": (3.0, 4), "shape": "Elliptical"}
-        ]
-    },
-    "Thyroid": {
-        "Radiofrequency Ablation": [
-            {"name": "STARmed Thyroid RFA", "size": "18-gauge", "active_tip": "0.5-1 cm"}
-        ],
-        "Laser Ablation": [
-            {"name": "EchoLaser", "size": "Thin fiber", "power": "3W", "duration": "5-10 min"}
-        ]
-    },
-    "Prostate": {
-        "High-Intensity Focused Ultrasound": [
-            {"name": "Ablatherm", "approach": "Transrectal", "margin": "3-5 mm"},
-            {"name": "Sonablate®", "approach": "Transrectal", "margin": "3-5 mm"}
-        ],
-        "Cryoablation": [
-            {"name": "Endocare Cryosystem", "cycle": "2 freeze-thaw cycles", "target_temp": "Below -40°C", "margin": "3-5 mm"}
-        ],
-        "Radiofrequency Ablation": [
-            {"name": "TUNA", "approach": "Transurethral", "active_tip": "Variable"}
-        ]
-    },
-    "Breast": {
-        "Radiofrequency Ablation": [
-            {"name": "Cool-tip™", "size": "17-gauge", "active_tip": "1.5-2 cm"}
-        ],
-        "Microwave Ablation": [
-            {"name": "Emprint™", "size": "Water-cooled", "power": "30-40W", "active_tip": "Variable"}
-        ],
-        "Cryoablation": [
-            {"name": "Visual-ICE™", "iceball": (2.5, 4), "shape": "Elliptical"}
-        ]
-    },
-    "Soft Tissue": {
-        "Radiofrequency Ablation": [
-            {"name": "Cool-tip™", "size": "18-gauge", "active_tip": "1-1.5 cm"}
-        ],
-        "Cryoablation": [
-            {"name": "CryoCare®", "iceball": (2.5, 3.5), "shape": "Elliptical"}
-        ]
-    },
-    "GYN": {
-        "Radiofrequency Ablation": [
-            {"name": "STARmed RFA", "size": "18-gauge", "active_tip": "Variable"}
-        ],
-        "Cryoablation": [
-            {"name": "Visual-ICE™", "iceball": (2.5, 4), "shape": "Elliptical"}
-        ]
-    }
-}
+app = Flask(__name__)
 
-# ===========================================
-# 2. Data: Detailed Protocols for Tumor Ablation
-# ===========================================
-protocol_details = {
-    "Liver": {
-        "Microwave Ablation": {
-            "Primary Malignancy": (
-                "MWA Protocol for Hepatic Malignancies:\n\n"
-                "• For tumors up to 2 cm, use 40W for 5 minutes to achieve an ablation zone of ~3.6×2.9×2.0 cm, ensuring a ≥1 cm margin.\n"
-                "• For larger lesions, overlapping ablations or multiple probes may be required.\n"
-                "• Guidance: CT/ultrasound; post-ablation imaging confirms complete coverage."
-            ),
-            "Metastasis": (
-                "For liver metastases, similar MWA protocols are applied with emphasis on achieving uniform ablation zones, often with a 1 cm margin."
-            ),
-            "Benign Lesion": (
-                "For benign hepatic lesions, a more conservative MWA protocol is used with a minimal margin (0.5-1 cm) to preserve liver tissue."
-            )
-        },
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "RFA Protocol for Hepatic Malignancies:\n\n"
-                "• Use cluster needles (e.g., RITA Starburst®) for tumors >3 cm to achieve a 1-1.5 cm safety margin.\n"
-                "• For tumors ≤3 cm, a single probe (e.g., Cool-tip™) may suffice.\n"
-                "• Guidance: Real-time CT/ultrasound with impedance monitoring."
-            ),
-            "Metastasis": (
-                "For liver metastases, RFA is tailored to ensure complete coverage, often using overlapping ablations with a 1 cm margin."
-            ),
-            "Benign Lesion": (
-                "For benign lesions, a narrow ablation zone (0.5-1 cm margin) is typically sufficient."
-            )
-        },
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Cryoablation Protocol for Hepatic Malignancies:\n\n"
-                "• Two freeze-thaw cycles: First freeze for 10 minutes at <-40°C with an 8-minute active thaw, followed by a second 10-minute freeze and a 3-minute thaw.\n"
-                "• The ice ball must extend at least 10 mm beyond the tumor margin.\n"
-                "• Guidance: CT/MRI monitoring of ice ball formation."
-            ),
-            "Metastasis": (
-                "For metastatic liver lesions, cryoablation follows similar cycles with careful monitoring to ensure complete coverage."
-            ),
-            "Benign Lesion": (
-                "For benign hepatic lesions, cryoablation may be performed with reduced cycles and a target margin of 0.5-1 cm."
-            )
-        },
-        "IRE": {
-            "Primary Malignancy": (
-                "IRE Protocol for Liver Tumors:\n\n"
-                "• Deliver 90 pulses with electrode spacing of 1.5-2 cm at 1500-3000 V.\n"
-                "• Especially useful for lesions near large vessels to avoid thermal injury."
-            )
-        }
-    },
-    "Lung": {
-        "Microwave Ablation": {
-            "Primary Malignancy": (
-                "MWA for Lung Tumors:\n\n"
-                "• 30-60W for 3-5 minutes to create an ablation zone with a ~1 cm margin.\n"
-                "• Guidance: CT with respiratory gating."
-            )
-        },
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "RFA for Lung Tumors:\n\n"
-                "• 50-100W delivered over 10-20 minutes to achieve a 1 cm safety margin.\n"
-                "• Guidance: CT with real-time monitoring."
-            )
-        },
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Cryoablation for Lung Lesions:\n\n"
-                "• Two 10-minute freeze cycles with ~8-minute thaw periods, ensuring the ice ball covers the lesion by ≥1 cm.\n"
-                "• Guidance: CT; monitor for pneumothorax."
-            )
-        },
-        "IRE": {
-            "Primary Malignancy": (
-                "IRE for Lung Tumors uses similar parameters as in the liver, with careful electrode placement."
-            )
-        }
-    },
-    "Renal": {
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Renal Cryoablation Protocol:\n\n"
-                "• Devices: Visual-ICE® or CryoCare Touch®.\n"
-                "• Needles: e.g., IceRod® 1.2 mm Plus, IceSphere® 1.2 mm (17 gauge) or 16 gauge for CryoCare Touch®.\n"
-                "• Two freeze-thaw cycles: First freeze for 10 minutes at <-40°C with an 8-minute thaw, then a second 10-minute freeze with a 3-minute thaw.\n"
-                "• The ice ball must extend at least 10 mm beyond the tumor margin; CT monitoring and hydrodissection are used as needed."
-            ),
-            "Metastasis": (
-                "For renal metastases, similar cryoablation protocols are applied with strict monitoring to protect renal parenchyma."
-            ),
-            "Benign Lesion": (
-                "For benign renal lesions (e.g., angiomyolipoma), protocols are adjusted with a target margin of 0.5-1 cm."
-            )
-        },
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "RFA for Renal Tumors:\n\n"
-                "• 50-100W for 12-20 minutes, aiming for a 1 cm margin while preserving normal tissue.\n"
-                "• Guidance: CT/ultrasound with temperature monitoring."
-            )
-        }
-    },
-    "Bone": {
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "Combined Treatment for Spinal Bone Lesions:\n\n"
-                "• Step 1: Bipolar RFA using an articulated probe (lumbar: vertebral neck approach; thoracic: lateral paravertebral).\n"
-                "• Step 2: Vertebroplasty to stabilize the vertebrae.\n"
-                "• Step 3: Follow-up targeted radiotherapy.\n"
-                "• Guidance: CT/fluoroscopy with local anesthesia."
-            ),
-            "Benign Lesion": (
-                "For benign bone lesions (e.g., osteoid osteoma), RFA is performed with precise targeting and minimal margins (2–3 mm)."
-            )
-        },
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Bone Cryoablation:\n\n"
-                "• Two freeze-thaw cycles to create an ice ball extending at least 1 cm beyond the lesion.\n"
-                "• Guidance: CT to avoid injury to adjacent neurovascular structures."
-            )
-        }
-    },
-    "Thyroid": {
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "Thyroid RFA for Malignancies:\n\n"
-                "• Specialized electrodes (e.g., STARmed) with a 0.5–1 cm active tip are used.\n"
-                "• Energy titrated under ultrasound guidance to achieve complete ablation while protecting adjacent structures."
-            ),
-            "Benign Lesion": (
-                "For benign thyroid nodules, ablation is confined to the nodule with a minimal margin (<0.5 cm)."
-            )
-        },
-        "Laser Ablation": {
-            "Primary Malignancy": (
-                "Thyroid Laser Ablation:\n\n"
-                "• Multiple thin laser fibers (e.g., EchoLaser) may be used; energy is delivered until the ablation zone becomes hypoechoic, ensuring a 0.5–1 cm margin."
-            ),
-            "Benign Lesion": (
-                "For benign thyroid nodules, a conservative laser ablation protocol is used with very narrow margins (<0.5 cm)."
-            )
-        }
-    },
-    "Prostate": {
-        "High-Intensity Focused Ultrasound": {
-            "Primary Malignancy": (
-                "HIFU for Prostate Cancer:\n\n"
-                "• Overlapping energy zones are delivered transrectally with target margins of 3–5 mm.\n"
-                "• Guidance: Real-time ultrasound; post-treatment MRI confirms ablation."
-            ),
-            "Benign Lesion": (
-                "For BPH, HIFU is applied to reduce gland volume with controlled energy delivery."
-            )
-        },
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Prostate Cryoablation:\n\n"
-                "• Two freeze-thaw cycles at temperatures below −40°C with 3–5 mm margins to maximize tumor destruction while preserving function."
-            ),
-            "Benign Lesion": (
-                "For benign conditions, protocols are adjusted for volume reduction with minimal collateral damage."
-            )
-        },
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "Transurethral RFA (TUNA):\n\n"
-                "• Energy is delivered via needle electrodes under transrectal ultrasound guidance to ablate the tumor while sparing adjacent tissues."
-            ),
-            "Benign Lesion": (
-                "For benign prostatic hyperplasia, TUNA is used to reduce gland volume with minimal injury."
-            )
-        }
-    },
-    "Breast": {
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "Breast RFA Protocol:\n\n"
-                "• Typically applied for small invasive carcinomas; 1.5-2 cm active tip probes are used to create an ablation zone with a 1 cm margin.\n"
-                "• Guidance: Ultrasound/MRI."
-            )
-        },
-        "Microwave Ablation": {
-            "Primary Malignancy": (
-                "Breast MWA Protocol:\n\n"
-                "• Settings are tailored to lesion size to achieve a sufficient margin, often with a multi-probe approach for larger tumors.\n"
-                "• Guidance: Ultrasound."
-            )
-        },
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Breast Cryoablation Protocol:\n\n"
-                "• Multiple cryoprobes are used based on tumor size and shape to cover the lesion with at least a 1 cm margin.\n"
-                "• Guidance: Ultrasound with real-time ice ball monitoring."
-            )
-        }
-    },
-    "Soft Tissue": {
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "RFA for Desmoid Tumors:\n\n"
-                "• Energy is delivered via a single or clustered probe (e.g., Cool-tip™) to create a controlled ablation zone with a 1 cm margin.\n"
-                "• Guidance: Ultrasound/MRI."
-            ),
-            "Benign Lesion": (
-                "For benign soft tissue tumors, RFA is used with a minimal margin to preserve surrounding function."
-            )
-        },
-        "Cryoablation": {
-            "Primary Malignancy": (
-                "Cryoablation for Desmoid Tumors:\n\n"
-                "• Multiple probes (often 2-4) are arranged according to tumor shape to achieve complete coverage with a 1 cm margin.\n"
-                "• Guidance: Ultrasound/CT."
-            )
-        }
-    },
-    "GYN": {
-        "Radiofrequency Ablation": {
-            "Primary Malignancy": (
-                "GYN RFA Protocol:\n\n"
-                "• Applied for select cervical, endometrial, or ovarian cancers, using energy delivery to create a 1 cm margin.\n"
-                "• Guidance: Ultrasound/CT."
-            ),
-            "Benign Lesion": (
-                "For benign conditions (e.g., endometrioma, fibroids), RFA is tailored to minimize damage to normal tissue (0.5-1 cm margin)."
-            )
-        },
-        "Cryoablation": {
-            "Benign Lesion": (
-                "Cryoablation for Endometrioma:\n\n"
-                "• Multiple cryoprobes are used to cover the lesion with a minimal margin (<1 cm) to relieve symptoms while preserving function.\n"
-                "• Guidance: Ultrasound."
-            )
-        }
-    }
-}
+# HTML template for the input form
+form_template = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Renal Cryoablation Predictor</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    label { display: block; margin-top: 10px; }
+    input, select { width: 300px; padding: 5px; }
+    .section { margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Renal Cryoablation Predictor</h1>
+  
+  <h2>Step 1: Calculate RENAL Nephrometry Score</h2>
+  <form method="POST" action="/result">
+    <div class="section">
+      <label for="radius">Radius (maximum diameter in cm):</label>
+      <select name="radius" id="radius" required>
+        <option value="1">≤4 cm (1 point)</option>
+        <option value="2">4-7 cm (2 points)</option>
+        <option value="3">≥7 cm (3 points)</option>
+      </select>
+    </div>
+    
+    <div class="section">
+      <label for="exophytic">Exophytic Tumor Location:</label>
+      <select name="exophytic" id="exophytic" required>
+        <option value="1">≥50% exophytic (1 point)</option>
+        <option value="2"><50% exophytic (2 points)</option>
+        <option value="3">100% endophytic (3 points)</option>
+      </select>
+    </div>
+    
+    <div class="section">
+      <label for="nearness">Nearness to Collecting System (in mm):</label>
+      <select name="nearness" id="nearness" required>
+        <option value="1">≥7 mm (1 point)</option>
+        <option value="2">4-7 mm (2 points)</option>
+        <option value="3">≤4 mm (3 points)</option>
+      </select>
+    </div>
+    
+    <div class="section">
+      <label for="location_pole">Location Relative to Renal Poles:</label>
+      <select name="location_pole" id="location_pole" required>
+        <option value="1">Entirely below or above the pole (1 point)</option>
+        <option value="2">Mass crosses the polar line (2 points)</option>
+        <option value="3">>50% crosses the polar line, is entirely between, or crosses the midline (3 points)</option>
+      </select>
+    </div>
+    
+    <div class="section">
+      <label for="artery">Does the mass touch the main renal artery or vein? (suffix "h")</label>
+      <select name="artery" id="artery" required>
+        <option value="0">No (0 points)</option>
+        <option value="1">Yes (add "h")</option>
+      </select>
+    </div>
+    
+    <h2>Step 2: Enter Mass and Additional Data</h2>
+    <div class="section">
+      <label for="mass_x">Mass Size X (cm):</label>
+      <input type="text" name="mass_x" id="mass_x" required>
+    </div>
+    <div class="section">
+      <label for="mass_y">Mass Size Y (cm):</label>
+      <input type="text" name="mass_y" id="mass_y" required>
+    </div>
+    <div class="section">
+      <label for="mass_z">Mass Size Z (cm):</label>
+      <input type="text" name="mass_z" id="mass_z" required>
+    </div>
+    <div class="section">
+      <label for="pole">Renal Pole Location:</label>
+      <select name="pole" id="pole" required>
+        <option value="upper">Upper Pole</option>
+        <option value="mid">Mid Pole</option>
+        <option value="lower">Lower Pole</option>
+      </select>
+    </div>
+    <div class="section">
+      <label for="cancer_type">Cancer Type (e.g., Clear Cell, Papillary):</label>
+      <input type="text" name="cancer_type" id="cancer_type" required>
+    </div>
+    <div class="section">
+      <label for="probe_config">Preferred Cryoablation Probe Configuration:</label>
+      <select name="probe_config" id="probe_config" required>
+        <option value="rod">Rod-Type</option>
+        <option value="sphere">Sphere-Type</option>
+        <option value="force">Force (hybrid)</option>
+        <option value="mixed">Mixed (e.g., 2 ROD + 1 SPHERE)</option>
+      </select>
+    </div>
+    
+    <div class="section">
+      <button type="submit">Calculate Prediction</button>
+    </div>
+  </form>
+</body>
+</html>
+"""
 
-# ===========================================
-# 3. Data: Pain Ablation Protocols
-# ===========================================
-pain_ablation_protocols = {
-    "Stellate Ganglion Cryoneurolysis": (
-        "Protocol for Stellate Ganglion Cryoneurolysis:\n\n"
-        "• Patient Position: Supine with neck extended.\n"
-        "• Guidance: Ultrasound-guided.\n"
-        "• Technique: Under local anesthesia, position the cryoprobe adjacent to the stellate ganglion.\n"
-        "• Procedure: Two freeze-thaw cycles; each freeze lasts 90 seconds at approximately -50°C, with a 30-second thaw between cycles.\n"
-        "• Probes: Typically one probe per side; bilateral treatment may require two probes."
-    ),
-    "Splanchnic Nerve Cryoablation": (
-        "Protocol for Splanchnic Nerve Cryoablation:\n\n"
-        "• Patient Position: Prone or lateral decubitus.\n"
-        "• Guidance: CT or fluoroscopy-guided.\n"
-        "• Technique: Under local anesthesia, position the cryoprobe near the splanchnic nerves.\n"
-        "• Procedure: Two freeze-thaw cycles; freeze cycle of 2 minutes at <-40°C with a 1-minute thaw period.\n"
-        "• Probes: Typically one probe per side; bilateral treatment may use two probes."
-    ),
-    "Lumbar Medial Branch RFA": (
-        "Protocol for Lumbar Medial Branch Radiofrequency Ablation:\n\n"
-        "• Patient Position: Prone.\n"
-        "• Guidance: Fluoroscopy or CT-guided.\n"
-        "• Technique: Under local anesthesia, place RF electrodes at the medial branches of the dorsal rami.\n"
-        "• Procedure: Create lesions at 80°C for 90 seconds per nerve.\n"
-        "• Probes: Typically 1 per targeted nerve; 2-4 levels may be treated."
-    )
-}
+# HTML template for the result page
+result_template = """
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Renal Cryoablation Prediction Result</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Prediction Result</h1>
+  <div class="result">
+    <p><strong>Calculated RENAL Score:</strong> {{ renal_score }} {% if has_h %} (with "h") {% endif %}</p>
+    <p><strong>Complexity:</strong> {{ complexity }}</p>
+    <p><strong>Mass Size (cm):</strong> {{ mass_x }} x {{ mass_y }} x {{ mass_z }}</p>
+    <p><strong>Renal Pole Location:</strong> {{ pole }}</p>
+    <p><strong>Cancer Type:</strong> {{ cancer_type }}</p>
+    <hr>
+    <p><strong>Recommended Probe Configuration:</strong> {{ probe_configuration }}</p>
+    <p><strong>Expected Ice-ball Size (cm):</strong> {{ iceball_x }} x {{ iceball_y }} x {{ iceball_z }}</p>
+    <p><strong>Hydrodissection:</strong> {{ hydrodissection }}</p>
+    <p><strong>Expected Complications:</strong> {{ complications }}</p>
+  </div>
+  <p><a href="/">Back to Input Form</a></p>
+</body>
+</html>
+"""
 
-# ===========================================
-# 4. Utility Function: Recommendation Logic for Tumor Ablation
-# (Now with an optional tumor shape parameter for cryoablation.)
-# ===========================================
-def suggest_probes_and_protocol(body_system, ablation_type, tumor_length, tumor_width, tumor_height, tumor_category, hist_grade, margin_required, tumor_shape=None):
-    """
-    Suggests optimal ablation probes and returns detailed protocol information based on
-    tumor dimensions, category (Primary Malignancy, Metastasis, Benign Lesion), histological grade (if applicable),
-    and, if applicable, tumor shape for cryoablation.
-    """
-    probes = ablation_data.get(body_system, {}).get(ablation_type, [])
-    d_ablation = max(tumor_length, tumor_width, tumor_height) + 2 * margin_required
-    recommendation = None
+# Function to calculate the RENAL score from input values
+def calculate_renal_score(radius, exophytic, nearness, pole_location, artery):
+    # radius: 1, 2, or 3 points
+    # exophytic: 1, 2, or 3 points
+    # nearness: 1, 2, or 3 points
+    # pole location: 1, 2, or 3 points
+    # artery: 0 or 1 (if touches, we add an "h" flag, but not counted in score)
+    score = int(radius) + int(exophytic) + int(nearness) + int(pole_location)
+    return score
 
-    # For IRE, use electrode-based recommendation.
-    if ablation_type == "IRE":
-        if d_ablation <= 2:
-            recommendation = f"NanoKnife (2 electrodes)"
-        elif d_ablation <= 4:
-            recommendation = f"NanoKnife (4 electrodes)"
-        else:
-            recommendation = f"NanoKnife (6 electrodes)"
-    # For Liver RFA/MWA, check for large lesions.
-    elif body_system == "Liver" and ablation_type in ["Radiofrequency Ablation", "Microwave Ablation"]:
-        if d_ablation > 3:
-            for probe in probes:
-                if "Cluster" in probe["name"]:
-                    recommendation = f"{probe['name']} (Multiple Probes)"
-                    break
-            if not recommendation and probes:
-                recommendation = f"{probes[0]['name']} (Multiple Probes)"
-        else:
-            for probe in probes:
-                if ablation_type in ["Radiofrequency Ablation", "Microwave Ablation"]:
-                    if "active_tip" in probe:
-                        try:
-                            active_tip_length = float(probe["active_tip"].split()[0].split("-")[0])
-                            if active_tip_length >= d_ablation:
-                                recommendation = f"{probe['name']} (1 probe)"
-                                break
-                        except Exception:
-                            continue
-                elif ablation_type == "Cryoablation" and "iceball" in probe:
-                    if probe["iceball"][1] >= d_ablation:
-                        recommendation = f"{probe['name']} (1 probe)"
-                        break
+# Function to classify complexity based on RENAL score
+def classify_complexity(renal_score):
+    if renal_score <= 6:
+        return "Low Complexity (RENAL 4-6)"
+    elif 7 <= renal_score <= 9:
+        return "Moderate Complexity (RENAL 7-9)"
     else:
-        # For cryoablation, override with tumor shape mapping if provided.
-        if ablation_type == "Cryoablation" and tumor_shape:
-            shape_to_probe_count = {
-                "Triangular": 3,
-                "Rectangle": 4,
-                "Diamond": 3,
-                "Linear": 2,
-                "Mixed": 4
-            }
-            probe_count = shape_to_probe_count.get(tumor_shape, 2)
-            if probes:
-                recommendation = f"{probes[0]['name']} ({probe_count} probes)"
-        else:
-            for probe in probes:
-                if ablation_type == "Cryoablation" and "iceball" in probe:
-                    if probe["iceball"][1] >= d_ablation:
-                        recommendation = f"{probe['name']} (1 probe)"
-                        break
-                elif ablation_type in ["Radiofrequency Ablation", "Microwave Ablation", "Laser Ablation"]:
-                    if "active_tip" in probe:
-                        try:
-                            active_tip_length = float(probe["active_tip"].split()[0].split("-")[0])
-                            if active_tip_length >= d_ablation:
-                                recommendation = f"{probe['name']} (1 probe)"
-                                break
-                        except Exception:
-                            continue
-        if not recommendation and ablation_type == "Cryoablation" and probes:
-            recommendation = f"{probes[0]['name']} (2 probes)"
-    
-    # Retrieve protocol details text.
-    # For tumor ablation, use the tumor category key.
-    proto_dict = protocol_details.get(body_system, {}).get(ablation_type, {})
-    proto_key = tumor_category  # ("Primary Malignancy", "Metastasis", or "Benign Lesion")
-    protocol_text = proto_dict.get(proto_key, "No protocol information available.")
-    
-    return recommendation if recommendation else "No suitable probe found", protocol_text
+        return "High Complexity (RENAL 10-12)"
 
-# ===========================================
-# 5. Main App
-# ===========================================
-def main():
-    st.set_page_config(page_title="Ablation Probe and Protocol Calculator", layout="centered")
+# Function to predict cryoablation parameters for renal masses
+def predict_parameters(mass_x, mass_y, mass_z, renal_score, pole, cancer_type, probe_config):
+    # For simplicity, we use a basic rule-based approach to choose probe configuration and estimate ice-ball size.
+    # Note: In a real application, these rules would be based on extensive data and validated models.
     
-    # Title and Subheading
-    st.title("Ablation Probe and Protocol Calculator")
-    st.markdown("<p style='font-size:14px;'>Created by Michailidis A. for free use</p>", unsafe_allow_html=True)
+    # Example rules:
+    # For sphere-type: assume each sphere produces a 4.0 cm ice-ball diameter.
+    # For rod-type: assume each rod produces an elliptical ice-ball with baseline 1.4 x 2.6 x 2.8 cm (for single probe).
+    # For mixed (2 ROD + 1 SPHERE), we assume a combination result.
+    # Also, if the pole is "upper", we note that hydrodissection is less feasible and complication risk (e.g., pneumothorax) is higher.
     
-    # Select Procedure Category: Tumor Ablation or Pain Palliation
-    proc_category = st.sidebar.selectbox("Procedure Category", ["Tumor Ablation", "Pain Palliation"])
-    
-    if proc_category == "Tumor Ablation":
-        st.markdown("### Tumor Ablation Planning")
-        # Tumor category: Primary Malignancy, Metastasis, or Benign Lesion.
-        tumor_category = st.sidebar.selectbox("Tumor Category", ["Primary Malignancy", "Metastasis", "Benign Lesion"])
-        hist_grade = None
-        if tumor_category == "Primary Malignancy":
-            hist_grade = st.sidebar.selectbox("Histological Grade", ["High Grade", "Low Grade"])
-        
-        # Organ selection (includes Liver, Lung, Renal, Bone, Thyroid, Prostate, Breast, Soft Tissue, GYN)
-        organ_options = list(ablation_data.keys())
-        body_system = st.sidebar.selectbox("Organ", organ_options)
-        
-        # Ablation Type selection from available options for the chosen organ.
-        ablation_type = st.sidebar.selectbox("Ablation Type", list(ablation_data[body_system].keys()))
-        
-        st.sidebar.header("Tumor Dimensions (cm)")
-        tumor_length = st.sidebar.number_input("Tumor Length", min_value=0.1, step=0.1, format="%.1f")
-        tumor_width  = st.sidebar.number_input("Tumor Width", min_value=0.1, step=0.1, format="%.1f")
-        tumor_height = st.sidebar.number_input("Tumor Height", min_value=0.1, step=0.1, format="%.1f")
-        
-        # For cryoablation, let the user choose the tumor shape.
-        tumor_shape = None
-        if ablation_type == "Cryoablation":
-            tumor_shape = st.sidebar.selectbox("Tumor Shape", ["Triangular", "Rectangle", "Diamond", "Linear", "Mixed"])
-        
-        # Determine required ablation margin based on tumor category and grade.
-        if tumor_category == "Primary Malignancy":
-            margin_required = 1.2 if hist_grade == "High Grade" else 0.7
+    # For demonstration, we define:
+    if probe_config == "sphere":
+        # Single sphere values scaled by number of probes (assuming linear arrangement for 1-2, triangular for 3, etc.)
+        # We'll use a simple mapping: for 1 probe, use the baseline; for 2 probes, add 1.0 cm to each dimension; for 3 probes, add 2.0 cm, etc.
+        # Here, we assume the number of probes required is determined by renal score: lower score gets fewer probes.
+        if renal_score <= 6:
+            n = 1
+        elif 7 <= renal_score <= 9:
+            n = 2
         else:
-            # For metastasis and benign lesions, use a more conservative margin.
-            margin_required = 0.5
-        st.sidebar.write(f"**Required Ablation Margin:** {margin_required} cm")
+            n = 3
         
-        if st.sidebar.button("Calculate Tumor Ablation Protocol"):
-            recommendation, protocol_info = suggest_probes_and_protocol(
-                body_system, ablation_type, tumor_length, tumor_width, tumor_height,
-                tumor_category, hist_grade, margin_required, tumor_shape
-            )
-            st.success(f"Recommended Probe: {recommendation}")
-            st.markdown("#### Detailed Tumor Ablation Protocol")
-            st.info(protocol_info)
+        base_diam = 4.0  # cm (spherical diameter)
+        spacing = 1.0  # cm
+        margin = 0.75  # cm per side
         
-        st.markdown("---")
-        st.subheader(f"{body_system} - {ablation_type} Probe Details")
-        probe_info_list = ablation_data.get(body_system, {}).get(ablation_type, [])
-        if probe_info_list:
-            probe_df = pd.DataFrame(probe_info_list)
-            st.table(probe_df)
+        # For a linear arrangement: Overall Diameter = (n-1)*spacing + n*base_diam + 2*margin.
+        overall_diam = (n - 1) * spacing + n * base_diam + 2 * margin
+        
+        probe_configuration = f"{n} SPHERE"
+        iceball_x = iceball_y = iceball_z = round(overall_diam, 1)
+    
+    elif probe_config == "rod":
+        # For rod-type, assume baseline dimensions (for 1 probe): 1.4 x 2.6 x 2.8 cm.
+        # We'll decide n based on renal score as above.
+        if renal_score <= 6:
+            n = 1
+        elif 7 <= renal_score <= 9:
+            n = 2
         else:
-            st.write("No probe details available for this selection.")
+            n = 3
+        
+        # For linear arrangement along the largest dimension:
+        base_x, base_y, base_z = 1.4, 2.6, 2.8  # cm for 1 probe
+        spacing = 1.0
+        margin = 0.75
+        
+        # For each axis, predicted dimension = (n-1)*spacing + n*(base dimension) + 2*margin.
+        iceball_x = round((n - 1) * spacing + n * base_x + 2 * margin, 1)
+        iceball_y = round((n - 1) * spacing + n * base_y + 2 * margin, 1)
+        iceball_z = round((n - 1) * spacing + n * base_z + 2 * margin, 1)
+        probe_configuration = f"{n} ROD"
     
-    else:  # Pain Palliation
-        st.markdown("### Pain Palliation / Nerve Ablation Protocols")
-        pain_choice = st.sidebar.selectbox("Pain Ablation Technique", list(pain_ablation_protocols.keys()))
-        if st.sidebar.button("Show Pain Ablation Protocol"):
-            protocol_text = pain_ablation_protocols.get(pain_choice, "No protocol information available.")
-            st.success(f"Selected Pain Ablation: {pain_choice}")
-            st.markdown("#### Detailed Pain Palliation Protocol")
-            st.info(protocol_text)
+    elif probe_config == "force":
+        # Force probes assumed to have larger ablation effect; use baseline 5.0 x 4.0 x 4.8 cm for 1 probe.
+        if renal_score <= 6:
+            n = 1
+        elif 7 <= renal_score <= 9:
+            n = 2
+        else:
+            n = 3
+        
+        base_x, base_y, base_z = 5.0, 4.0, 4.8
+        spacing = 1.0
+        margin = 0.75
+        iceball_x = round((n - 1) * spacing + n * base_x + 2 * margin, 1)
+        iceball_y = round((n - 1) * spacing + n * base_y + 2 * margin, 1)
+        iceball_z = round((n - 1) * spacing + n * base_z + 2 * margin, 1)
+        probe_configuration = f"{n} FORCE"
     
-    st.markdown("---")
-    st.markdown("Developed for efficient ablation planning based on current research literature and clinical protocols.")
+    elif probe_config == "mixed":
+        # For a mixed configuration such as "2 ROD + 1 SPHERE" (total 3 probes),
+        # we can average the dimensions from the rod and sphere predictions.
+        n = 3
+        # Assume 2 rod probes and 1 sphere probe.
+        # Use previous baseline for rod and sphere:
+        rod_dims = [1.4, 2.6, 2.8]  # for rod (per probe)
+        sphere_diam = 4.0
+        # Calculate average per axis as weighted average:
+        # For simplicity, we average the sphere value with the rod value for the two rod probes.
+        avg_x = (2 * rod_dims[0] + sphere_diam) / 3
+        avg_y = (2 * rod_dims[1] + sphere_diam) / 3
+        avg_z = (2 * rod_dims[2] + sphere_diam) / 3
+        spacing = 1.0
+        margin = 0.75
+        iceball_x = round((n - 1) * spacing + n * avg_x + 2 * margin, 1)
+        iceball_y = round((n - 1) * spacing + n * avg_y + 2 * margin, 1)
+        iceball_z = round((n - 1) * spacing + n * avg_z + 2 * margin, 1)
+        probe_configuration = "2 ROD + 1 SPHERE"
+    
+    # Based on pole location: if "upper", assume no hydrodissection possible and higher risk of pneumothorax.
+    if pole.lower() == "upper":
+        hydrodissection = "Not possible"
+        complications = "Pneumothorax risk"
+    else:
+        hydrodissection = "Recommended"
+        complications = "Standard risk"
+    
+    # For demonstration, let’s adjust the prediction if the cancer type is "clear cell"
+    if cancer_type.lower() == "clear cell":
+        # For example, assume clear cell histology slightly increases the ablation zone need by 10%
+        iceball_x = round(iceball_x * 1.1, 1)
+        iceball_y = round(iceball_y * 1.1, 1)
+        iceball_z = round(iceball_z * 1.1, 1)
+    
+    return probe_configuration, iceball_x, iceball_y, iceball_z, hydrodissection, complications
+
+@app.route("/", methods=["GET"])
+def index():
+    return render_template_string(form_template)
+
+@app.route("/result", methods=["POST"])
+def result():
+    # Get RENAL inputs and calculate score
+    radius = request.form.get("radius")
+    exophytic = request.form.get("exophytic")
+    nearness = request.form.get("nearness")
+    location_pole = request.form.get("location_pole")
+    artery = request.form.get("artery")
+    renal_score = calculate_renal_score(radius, exophytic, nearness, location_pole, artery)
+    complexity = classify_complexity(renal_score)
+    
+    # Get mass size and other details
+    mass_x = float(request.form.get("mass_x"))
+    mass_y = float(request.form.get("mass_y"))
+    mass_z = float(request.form.get("mass_z"))
+    pole = request.form.get("pole")
+    cancer_type = request.form.get("cancer_type")
+    probe_config = request.form.get("probe_config")
+    
+    # Get predicted parameters
+    probe_configuration, iceball_x, iceball_y, iceball_z, hydrodissection, complications = predict_parameters(
+        mass_x, mass_y, mass_z, renal_score, pole, cancer_type, probe_config
+    )
+    
+    return render_template_string(result_template,
+                                  renal_score=renal_score,
+                                  has_h="Yes" if artery=="1" else "No",
+                                  complexity=complexity,
+                                  mass_x=mass_x,
+                                  mass_y=mass_y,
+                                  mass_z=mass_z,
+                                  pole=pole,
+                                  cancer_type=cancer_type,
+                                  probe_configuration=probe_configuration,
+                                  iceball_x=iceball_x,
+                                  iceball_y=iceball_y,
+                                  iceball_z=iceball_z,
+                                  hydrodissection=hydrodissection,
+                                  complications=complications)
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
