@@ -148,7 +148,7 @@ df_merged["size_parsed"] = df_merged["size_mass"].apply(parse_size)
 # ------------------------------------
 st.title("Renal Cryoablation Treatment Planner")
 st.markdown("""
-This application matches your tumor characteristics to our reference data and provides a recommended cryoablation plan.
+This application matches your tumor parameters to our reference data and provides a recommended cryoablation plan.
 Enter your tumor parameters in the sidebar.
 """)
 
@@ -182,7 +182,7 @@ st.sidebar.write(f"**Histology Type:** {inp_histology}")
 # Matching Algorithm: Find the closest matching row
 # ------------------------------------
 if st.sidebar.button("Generate Cryoablation Plan"):
-    # Do not filter out based on location; we only match on mass size, RENAL score, and histology.
+    # Function to extract numeric part from RENAL score
     def extract_numeric_from_score(s):
         try:
             return float(''.join(ch for ch in s if ch.isdigit() or ch == '.'))
@@ -197,10 +197,10 @@ if st.sidebar.button("Generate Cryoablation Plan"):
     best_idx = None
     best_diff = float("inf")
     
-    # Weights for the difference metric:
-    mass_weight = 3     # highest importance for tumor size match
-    renal_weight = 2    # second importance for RENAL score match
-    histology_weight = 1  # third lowest importance for histology mismatch penalty
+    # Define weights: mass difference weight = 5, RENAL score difference = 2, histology penalty = 1
+    mass_weight = 5
+    renal_weight = 2
+    histology_weight = 1
     
     for idx, row in df_merged.iterrows():
         parsed = row["size_parsed"]
@@ -211,15 +211,15 @@ if st.sidebar.button("Generate Cryoablation Plan"):
         ref_mean = np.mean(ref_dims)
         ref_renal = extract_numeric_from_score(row["RENAL_score"])
         
-        # Calculate the weighted mass difference (using difference in means plus sorted absolute differences)
+        # Calculate the weighted mass difference: weighted mean difference plus sum of absolute differences in sorted dimensions.
         mass_diff = mass_weight * abs(ref_mean - user_mean) + np.sum(np.abs(ref_sorted - user_sorted))
         # Calculate the weighted RENAL score difference
         renal_diff = renal_weight * abs(ref_renal - user_renal_numeric)
-        # Histology penalty: if not a case-insensitive match, add a penalty of 1.
+        # Histology penalty: if the reference histology does not match the user input (case-insensitive), add a penalty.
         if row["BIOPSY"].strip().lower() == inp_histology.strip().lower():
             histology_penalty = 0
         else:
-            histology_penalty = histology_weight * 1  # adjust the penalty value as needed
+            histology_penalty = histology_weight * 1
         
         total_diff = mass_diff + renal_diff + histology_penalty
         
