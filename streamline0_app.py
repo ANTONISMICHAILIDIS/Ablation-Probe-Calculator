@@ -168,7 +168,7 @@ inp_renal_numeric = st.sidebar.number_input("RENAL Score (numeric)", min_value=1
 inp_renal_suffix = st.sidebar.selectbox("RENAL Score Suffix", options=["a", "p", "x"], index=1)
 inp_renal_score = f"{inp_renal_numeric}{inp_renal_suffix}"
 
-# Histology Type (Biopsy Type) - Cancer grade is removed.
+# Histology Type
 histology_options = ["CLEAR CELL", "PAPILLARY", "CHROMOPHOBE"]
 inp_histology = st.sidebar.selectbox("Histology Type", options=histology_options, index=0)
 
@@ -179,70 +179,71 @@ st.sidebar.write(f"**RENAL Score:** {inp_renal_score}")
 st.sidebar.write(f"**Histology Type:** {inp_histology}")
 
 # ------------------------------------
-# Matching Algorithm: Find the closest reference row (based on tumor dimensions and RENAL score, filtered by histology type)
+# Matching Algorithm: Find the closest matching row
 # ------------------------------------
 if st.sidebar.button("Generate Cryoablation Plan"):
-    # Filter the merged dataframe by histology type (case-insensitive substring match)
-    df_filtered = df_merged[
-        df_merged["BIOPSY"].str.strip().str.lower().str.contains(inp_histology.strip().lower())
-    ]
+    # Do not filter out based on location; we only match on mass size, RENAL score, and histology.
+    def extract_numeric_from_score(s):
+        try:
+            return float(''.join(ch for ch in s if ch.isdigit() or ch == '.'))
+        except:
+            return np.nan
+
+    user_dims = np.array([inp_length, inp_width, inp_height])
+    user_sorted = np.sort(user_dims)
+    user_mean = np.mean(user_dims)
+    user_renal_numeric = float(inp_renal_numeric)
+
+    best_idx = None
+    best_diff = float("inf")
     
-    if df_filtered.empty:
-        st.error("No matching data found for the given Histology Type. Please check your inputs.")
-    else:
-        # Helper: extract numeric value from RENAL score (e.g., "5p" -> 5)
-        def extract_numeric_from_score(s):
-            try:
-                return float(''.join(ch for ch in s if ch.isdigit() or ch == '.'))
-            except:
-                return np.nan
+    # Weights for the difference metric:
+    mass_weight = 3     # highest importance for tumor size match
+    renal_weight = 2    # second importance for RENAL score match
+    histology_weight = 1  # third lowest importance for histology mismatch penalty
+    
+    for idx, row in df_merged.iterrows():
+        parsed = row["size_parsed"]
+        if parsed is None or len(parsed) != 3:
+            continue
+        ref_dims = np.array(parsed)
+        ref_sorted = np.sort(ref_dims)
+        ref_mean = np.mean(ref_dims)
+        ref_renal = extract_numeric_from_score(row["RENAL_score"])
         
-        # User tumor dimensions as a sorted numpy array and mean
-        user_dims = np.array([inp_length, inp_width, inp_height])
-        user_sorted = np.sort(user_dims)
-        user_mean = np.mean(user_dims)
-        user_renal_numeric = float(inp_renal_numeric)
-        
-        best_idx = None
-        best_diff = float("inf")
-        
-        # Iterate over filtered rows and compute a weighted difference metric
-        for idx, row in df_filtered.iterrows():
-            parsed = row["size_parsed"]
-            if parsed is None or len(parsed) != 3:
-                continue
-            ref_dims = np.array(parsed)
-            ref_sorted = np.sort(ref_dims)
-            ref_mean = np.mean(ref_dims)
-            ref_renal = extract_numeric_from_score(row["RENAL_score"])
-            
-            # Compute difference metric:
-            #   - 2x the difference in mean dimensions
-            #   - Sum of absolute differences in each sorted dimension
-            #   - Absolute difference in the RENAL numeric score
-            diff = abs(ref_mean - user_mean)*2 + np.sum(np.abs(ref_sorted - user_sorted)) + abs(ref_renal - user_renal_numeric)
-            
-            if diff < best_diff:
-                best_diff = diff
-                best_idx = idx
-        
-        if best_idx is None:
-            st.error("No matching data found. Please verify your tumor size or RENAL score.")
+        # Calculate the weighted mass difference (using difference in means plus sorted absolute differences)
+        mass_diff = mass_weight * abs(ref_mean - user_mean) + np.sum(np.abs(ref_sorted - user_sorted))
+        # Calculate the weighted RENAL score difference
+        renal_diff = renal_weight * abs(ref_renal - user_renal_numeric)
+        # Histology penalty: if not a case-insensitive match, add a penalty of 1.
+        if row["BIOPSY"].strip().lower() == inp_histology.strip().lower():
+            histology_penalty = 0
         else:
-            match = df_filtered.loc[best_idx]
-            st.header("Recommended Cryoablation Plan")
-            st.subheader("Matched Reference Parameters")
-            st.write(f"**Tumor Size (Mass):** {match['size_mass']} cm")
-            st.write(f"**RENAL Score:** {match['RENAL_score']}")
-            st.write(f"**Histology Type:** {match['BIOPSY']}")
-            st.markdown("---")
-            st.subheader("Cryoablation Parameters")
-            st.write(f"**Cryoprobes:** {match['cryoprobes']}")
-            st.write(f"**Types of Probes:** {match['types_of_probes']}")
-            st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
-            st.write(f"**Protection:** {match['protection']}")
-            st.write(f"**Complications:** {match['complications']}")
-            st.info(f"Matching difference metric: {best_diff:.2f}")
+            histology_penalty = histology_weight * 1  # adjust the penalty value as needed
+        
+        total_diff = mass_diff + renal_diff + histology_penalty
+        
+        if total_diff < best_diff:
+            best_diff = total_diff
+            best_idx = idx
+
+    if best_idx is None:
+        st.error("No matching data found. Please verify your tumor size or RENAL score.")
+    else:
+        match = df_merged.loc[best_idx]
+        st.header("Recommended Cryoablation Plan")
+        st.subheader("Matched Reference Parameters")
+        st.write(f"**Tumor Size (Mass):** {match['size_mass']} cm")
+        st.write(f"**RENAL Score:** {match['RENAL_score']}")
+        st.write(f"**Histology Type:** {match['BIOPSY']}")
+        st.markdown("---")
+        st.subheader("Cryoablation Parameters")
+        st.write(f"**Cryoprobes:** {match['cryoprobes']}")
+        st.write(f"**Types of Probes:** {match['types_of_probes']}")
+        st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
+        st.write(f"**Protection:** {match['protection']}")
+        st.write(f"**Complications:** {match['complications']}")
+        st.info(f"Matching difference metric: {best_diff:.2f}")
 
 st.markdown("---")
 st.write("Created by Michailidis A. for free use (demo).")
