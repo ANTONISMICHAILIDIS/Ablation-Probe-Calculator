@@ -65,8 +65,8 @@ kidney_main_data = [
 ]
 df_main_kidney = pd.DataFrame(kidney_main_data)
 
-# Cryoablation results table for kidney (numbered 1 to 54; we assume row 54 is extra and ignore it)
-cryo_data = [
+# Kidney cryoablation results table for kidney (numbered 1 to 54; we use only rows 1-53)
+cryo_data_kidney = [
     {"number": 1, "cryoprobes": "3 rod", "types_of_probes": "ROD", "size_Ice_ball": "2,7x1,9x3,2", "protection": "NO", "complications": "NONE"},
     {"number": 2, "cryoprobes": "1", "types_of_probes": "", "size_Ice_ball": "1,4 x 2,6 x 2,8 or 1,7", "protection": "YES/COLON SPLEEN", "complications": "NONE"},
     {"number": 3, "cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "2,8 x 2,7 x 3,5", "protection": "NONE", "complications": "NONE"},
@@ -119,12 +119,11 @@ cryo_data = [
     {"number": 50, "cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "3,6 x 3 x 3,5", "protection": "YES/SPLEEN,COLON", "complications": "NONE"},
     {"number": 51, "cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "4,1 x 4 x 5,2", "protection": "YES/COLON", "complications": "SUBCUTANEUS HEMATOMA / MILD HEMORRHAGE"},
     {"number": 52, "cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "2,7 x 2,9 x 2,6", "protection": "YES/ COLON", "complications": "NONE"},
-    {"number": 53, "cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "4,7 x 3,6 x 3,5", "protection": "YES/ COLON", "complications": "NONE"},
-    {"number": 54, "cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "2,3 x 33 x 2,5", "protection": "YES/ PSOAS", "complications": "NONE"}
+    {"number": 53, "cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "4,7 x 3,6 x 3,5", "protection": "YES/ COLON", "complications": "NONE"}
 ]
-df_cryo_kidney = pd.DataFrame(cryo_data)
+df_cryo_kidney = pd.DataFrame(cryo_data_kidney)
 
-# Only use rows 1-53 (drop the extra row 54)
+# Only use rows 1-53 (drop extra if any)
 df_cryo_kidney = df_cryo_kidney[df_cryo_kidney["number"] <= 53]
 
 # Merge kidney data on "number"
@@ -136,538 +135,86 @@ df_kidney_merged = pd.merge(df_main_kidney, df_cryo_kidney, left_index=True, rig
 # 2) Reference Data for Lung
 #####################################
 
-# Lung main data from provided sample
 lung_main_data = [
-    {
-        "index_l": 1,
-        "type_lesion": "NSCLC",
-        "age": 82,
-        "side": "R",
-        "size_lung": "1,3x2,1x2,3"
-    },
-    {
-        "index_l": 2,
-        "type_lesion": "NSCLC",
-        "age": 87,
-        "side": "R",
-        "size_lung": "1,5x1,4x2,1"
-    },
-    {
-        "index_l": 3,
-        "type_lesion": "NSCLC",
-        "age": 83,
-        "side": "R",
-        "size_lung": "3,5x3,4x2,1"
-    },
-    {
-        "index_l": 4,
-        "type_lesion": "NSCLC",
-        "age": 69,
-        "side": "R",
-        "size_lung": "2x1,7x2"
-    },
-    {
-        "index_l": 5,
-        "type_lesion": "NSCLC",
-        "age": 83,
-        "side": "L",
-        "size_lung": "1,9x1,8x2,2"
-    },
-    {
-        "index_l": 6,
-        "type_lesion": "META-COLORECTAL",
-        "age": 65,
-        "side": "R",
-        "size_lung": "1,5x1,3x1,1"
-    },
-    {
-        "index_l": 7,
-        "type_lesion": "META-COLORECTAL",
-        "age": 63,
-        "side": "L",
-        "size_lung": "3,7x3,3x2,8"
-    },
-    {
-        "index_l": 8,
-        "type_lesion": "NSCLC",
-        "age": 80,
-        "side": "R",
-        "size_lung": "2,3x1,9x1,9"
-    },
-    {
-        "index_l": 9,
-        "type_lesion": "META-COLORECTAL",
-        "age": 58,
-        "side": "R",
-        "size_lung": "1,1x1x0,9"
-    },
-    {
-        "index_l": 10,
-        "type_lesion": "NSCLC",
-        "age": 69,
-        "side": "L",
-        "size_lung": "1,2x1,6x1"
-    },
-    {
-        "index_l": 11,
-        "type_lesion": "NSCLC",
-        "age": 72,
-        "side": "L",
-        "size_lung": "1,1x0,8x0,6"
-    },
-    {
-        "index_l": 12,
-        "type_lesion": "NSCLC",
-        "age": 71,
-        "side": "L",
-        "size_lung": "1,6x1,1x1,6"
-    },
-    {
-        "index_l": 13,
-        "type_lesion": "NSCLC",
-        "age": 79,
-        "side": "L",
-        "size_lung": "4,6x3,2x3,9"
-    },
-    {
-        "index_l": 14,
-        "type_lesion": "META-COLORECTAL",
-        "age": 64,
-        "side": "R",
-        "size_lung": "2,1x2x1x5"  # original snippet was ambiguous
-    },
-    {
-        "index_l": 15,
-        "type_lesion": "META-COLORECTAL",
-        "age": 64,    # guessed same age from line above
-        "side": "L",
-        "size_lung": "1,4x1,3x1,3"
-    },
-    {
-        "index_l": 16,
-        "type_lesion": "META-COLORECTAL",
-        "age": 64,     # guessed same age
-        "side": None,  # unknown
-        "size_lung": "2,5x2,1x1,5"
-    },
-    {
-        "index_l": 17,
-        "type_lesion": "NSCLC",
-        "age": 69,
-        "side": "L",
-        "size_lung": "3,1x1,8x3"
-    },
-    {
-        "index_l": 18,
-        "type_lesion": "NSCLC",
-        "age": 76,
-        "side": "R",
-        "size_lung": "2,2x2,6x1,8"
-    },
-    {
-        "index_l": 19,
-        "type_lesion": "NSCLC",
-        "age": 75,
-        "side": "R",
-        "size_lung": "2,7x1,6x2,9"
-    },
-    {
-        "index_l": 20,
-        "type_lesion": "NSCLC",
-        "age": 77,
-        "side": "L",
-        "size_lung": "2,2x1,8x1,6"
-    },
-    {
-        "index_l": 21,
-        "type_lesion": "META-COLORECTAL",
-        "age": 74,
-        "side": "R",
-        "size_lung": "4,2x4x3,6"
-    },
-    {
-        "index_l": 22,
-        "type_lesion": "NSCLC",
-        "age": 82,
-        "side": "L",
-        "size_lung": "1,9x1,3x1,5"
-    },
-    {
-        "index_l": 23,
-        "type_lesion": "NSCLC",
-        "age": 82,
-        "side": "R",
-        "size_lung": "1,6x1,9x2,2"
-    },
-    {
-        "index_l": 24,
-        "type_lesion": "META-COLORECTAL",
-        "age": 74,
-        "side": "R",
-        "size_lung": "1x0,9x0,8"
-    },
-    {
-        "index_l": 25,
-        "type_lesion": "NSCLC",
-        "age": 71,
-        "side": "R",
-        "size_lung": "1,4x1,1x1,1"
-    },
-    {
-        "index_l": 26,
-        "type_lesion": "NSCLC",
-        "age": 78,
-        "side": "L",
-        "size_lung": "1,3x1,1x1,2"
-    },
-    {
-        "index_l": 27,
-        "type_lesion": "META-COLORECTAL",
-        "age": 63,
-        "side": "L",
-        "size_lung": "4,5"
-    },
-    {
-        "index_l": 28,
-        "type_lesion": "NSCLC",
-        "age": 51,
-        "side": "L",
-        "size_lung": "1,2x0,8x1"
-    },
-    {
-        "index_l": 29,
-        "type_lesion": "META-COLORECTAL",
-        "age": 63,
-        "side": "R",
-        "size_lung": "4,5"
-    },
-    {
-        "index_l": 30,
-        "type_lesion": "NSCLC",
-        "age": 68,
-        "side": "R",
-        "size_lung": "1,1x1,2x1"
-    },
-    {
-        "index_l": 31,
-        "type_lesion": "NSCLC",
-        "age": 81,
-        "side": "R",
-        "size_lung": "2χ1,2x1,3"  # original text has Greek 'χ'?
-    },
-    {
-        "index_l": 32,
-        "type_lesion": "NSCLC",
-        "age": 70,
-        "side": "R",
-        "size_lung": "2,1x2x1,7"
-    },
-    {
-        "index_l": 33,
-        "type_lesion": "META-COLORECTAL",
-        "age": None,
-        "side": "R",
-        "size_lung": "1,3x1,3x1,2"
-    },
-    {
-        "index_l": 34,
-        "type_lesion": "META-COLORECTAL",
-        "age": 70,
-        "side": "R",
-        "size_lung": "2,4"
-    },
-    {
-        "index_l": 35,
-        "type_lesion": "META-COLORECTAL",
-        "age": 48,
-        "side": "L",
-        "size_lung": "1,2x1,1x0,9"
-    },
-    {
-        "index_l": 36,
-        "type_lesion": "NSCLC",
-        "age": 78,
-        "side": "R",
-        "size_lung": "1,7x1,7x1,8"
-    },
-    {
-        "index_l": 37,
-        "type_lesion": "NSCLC",
-        "age": 64,
-        "side": "L",
-        "size_lung": "1,5x1x0,8"
-    },
-    {
-        "index_l": 38,
-        "type_lesion": "MESOTHELIOMA",  # from Greek “μεσοθηλίωμα”
-        "age": 65,
-        "side": "R",
-        "size_lung": "2x1,4x1,7"
-    },
-    {
-        "index_l": 39,
-        "type_lesion": "NSCLC",
-        "age": 71,
-        "side": "L",
-        "size_lung": "0,8x1x0,8"
-    },
-    {
-        "index_l": 40,
-        "type_lesion": "NSCLC",
-        "age": 83,
-        "side": "R",
-        "size_lung": "1,4x1,8x1,5"
-    },
-    {
-        "index_l": 41,
-        "type_lesion": "NSCLC",
-        "age": 83,
-        "side": "R",
-        "size_lung": "2,2x2,8x2,8"
-    },
-    {
-        "index_l": 42,
-        "type_lesion": "NSCLC",
-        "age": 76,
-        "side": "L",
-        "size_lung": "1,4x0,9x1,3"
-    },
-    {
-        "index_l": 43,
-        "type_lesion": "META-COLORECTAL",
-        "age": 71,
-        "side": "R",
-        "size_lung": "3,7x2,7x2,9"
-    },
-    {
-        "index_l": 44,
-        "type_lesion": "META-COLORECTAL",
-        "age": 73,
-        "side": "R",
-        "size_lung": "2,1x0,8x0,8"
-    },
-    {
-        "index_l": 45,
-        "type_lesion": "NSCLC",
-        "age": 70,
-        "side": "L",
-        "size_lung": "1,3x1,1x1,2"
-    },
-    {
-        "index_l": 46,
-        "type_lesion": "NSCLC",
-        "age": 84,
-        "side": "L",
-        "size_lung": "2,5x1,8x3"
-    },
-    {
-        "index_l": 47,
-        "type_lesion": "NSCLC",
-        "age": 78,
-        "side": "R",
-        "size_lung": "3,2x2,1x2,8"
-    },
-    {
-        "index_l": 48,
-        "type_lesion": "NSCLC",
-        "age": 82,
-        "side": "L",
-        "size_lung": "3,2x2,5x3"
-    },
-    {
-        "index_l": 49,
-        "type_lesion": "META-COLORECTAL",
-        "age": 73,
-        "side": "R",
-        "size_lung": "1,5x1,2x1"
-    },
-    {
-        "index_l": 50,
-        "type_lesion": "META-COLORECTAL",
-        "age": 73,
-        "side": "L",
-        "size_lung": "1,5x1,9x1,8"
-    },
-    {
-        "index_l": 51,
-        "type_lesion": "NSCLC",
-        "age": 73,
-        "side": "L",
-        "size_lung": "1,2x0,8x1,3"
-    },
-    {
-        "index_l": 52,
-        "type_lesion": "NSCLC",
-        "age": 73,
-        "side": "R",
-        "size_lung": "1,3x1,2x1,4"
-    },
-    {
-        "index_l": 53,
-        "type_lesion": "META-COLORECTAL",
-        "age": 73,
-        "side": "R",
-        "size_lung": "0,9x0,9x1 + 0,7x0,7x0,6"  # multi-lesion line
-    },
-    {
-        "index_l": 54,
-        "type_lesion": "NSCLC",
-        "age": 78,
-        "side": "R",
-        "size_lung": "1x0,8x0,6"
-    },
-    {
-        "index_l": 55,
-        "type_lesion": "?",
-        "age": 73,
-        "side": "M",   # guess from "73 M"?
-        "size_lung": "1,9x1,4x1,8"
-    },
-    {
-        "index_l": 56,
-        "type_lesion": "NSCLC",
-        "age": 73,
-        "side": "R",
-        "size_lung": "1,2x1,5x1"
-    },
-    {
-        "index_l": 57,
-        "type_lesion": "NSCLC",
-        "age": 79,
-        "side": "L",
-        "size_lung": "2,4x1,7x2,1"
-    },
-    {
-        "index_l": 58,
-        "type_lesion": "NSCLC",
-        "age": 69,
-        "side": "R",
-        "size_lung": "2x2x1,8"
-    },
-    {
-        "index_l": 59,
-        "type_lesion": "NSCLC",  # from "ΝSCLC" (Greek letter)
-        "age": 81,
-        "side": "R",
-        "size_lung": "3,1x4x3,3"
-    },
-    {
-        "index_l": 60,
-        "type_lesion": "META-COLORECTAL",
-        "age": 73,
-        "side": "R",
-        "size_lung": "3,4X21X16"
-    },
-    {
-        "index_l": 61,
-        "type_lesion": "NSCLC",
-        "age": 72,
-        "side": "L",
-        "size_lung": "1,2Χ1Χ1"
-    },
-    {
-        "index_l": 62,
-        "type_lesion": "NSCLC",
-        "age": 60,
-        "side": "L",
-        "size_lung": "1,1X1,1X1,3"
-    },
-    {
-        "index_l": 63,
-        "type_lesion": "NSCLC",
-        "age": 80,
-        "side": "L",
-        "size_lung": "2x1,3x2,2"
-    },
-    {
-        "index_l": 64,
-        "type_lesion": "META-COLORECTAL",
-        "age": 70,
-        "side": "L",
-        "size_lung": "1,1Χ1,2Χ1,3"
-    },
-    {
-        "index_l": 65,
-        "type_lesion": "NSCLC",
-        "age": 61,
-        "side": "L",
-        "size_lung": "1,7x1x1,7"
-    },
-    {
-        "index_l": 66,
-        "type_lesion": "NSCLC+RCC",
-        "age": 76,
-        "side": "R",
-        "size_lung": "2,4x1,8x1,9"
-    },
-    {
-        "index_l": 67,
-        "type_lesion": "META-RCC",
-        "age": 73,
-        "side": "L",
-        "size_lung": "2,3x2x1,9"
-    },
-    {
-        "index_l": 68,
-        "type_lesion": "NSCLC",
-        "age": 65,
-        "side": "L",
-        "size_lung": "1,1x0,8x0,9"
-    },
-    {
-        "index_l": 69,
-        "type_lesion": "META-COLORECTAL",
-        "age": 82,
-        "side": "R",
-        "size_lung": "3,9x2,4x3,8"
-    },
-    {
-        "index_l": 70,
-        "type_lesion": "META-COLORECTAL",
-        "age": 67,
-        "side": "L",
-        "size_lung": "2x2x2,2"
-    },
-    {
-        "index_l": 71,
-        "type_lesion": "NSCLC",
-        "age": 77,
-        "side": "R",
-        "size_lung": "2x1,8x1,8"
-    },
-    {
-        "index_l": 72,
-        "type_lesion": "NSCLC",
-        "age": 67,
-        "side": "R",
-        "size_lung": "3,1x3,6x2,5"
-    },
-    {
-        "index_l": 73,
-        "type_lesion": "NSCLC",
-        "age": 74,
-        "side": "R",
-        "size_lung": "2,5x1,8x1,4"
-    },
-    {
-        # line #74 is just "1,3x1,1x0,9" with no type, no age, no side => we skip or store partial
-        "index_l": 74,
-        "type_lesion": "?",
-        "age": None,
-        "side": None,
-        "size_lung": "1,3x1,1x0,9"
-    },
-    {
-        "index_l": 75,
-        "type_lesion": "NSCLC",
-        "age": 66,
-        "side": "L",
-        "size_lung": "1,9x1,5x1,7"
-    }
+    {"index_l": 1, "type_lesion": "NSCLC", "age": 82, "side": "R", "size_lung": "1,3x2,1x2,3"},
+    {"index_l": 2, "type_lesion": "NSCLC", "age": 87, "side": "R", "size_lung": "1,5x1,4x2,1"},
+    {"index_l": 3, "type_lesion": "NSCLC", "age": 83, "side": "R", "size_lung": "3,5x3,4x2,1"},
+    {"index_l": 4, "type_lesion": "NSCLC", "age": 69, "side": "R", "size_lung": "2x1,7x2"},
+    {"index_l": 5, "type_lesion": "NSCLC", "age": 83, "side": "L", "size_lung": "1,9x1,8x2,2"},
+    {"index_l": 6, "type_lesion": "META-COLORECTAL", "age": 65, "side": "R", "size_lung": "1,5x1,3x1,1"},
+    {"index_l": 7, "type_lesion": "META-COLORECTAL", "age": 63, "side": "L", "size_lung": "3,7x3,3x2,8"},
+    {"index_l": 8, "type_lesion": "NSCLC", "age": 80, "side": "R", "size_lung": "2,3x1,9x1,9"},
+    {"index_l": 9, "type_lesion": "META-COLORECTAL", "age": 58, "side": "R", "size_lung": "1,1x1x0,9"},
+    {"index_l": 10, "type_lesion": "NSCLC", "age": 69, "side": "L", "size_lung": "1,2x1,6x1"},
+    {"index_l": 11, "type_lesion": "NSCLC", "age": 72, "side": "L", "size_lung": "1,1x0,8x0,6"},
+    {"index_l": 12, "type_lesion": "NSCLC", "age": 71, "side": "L", "size_lung": "1,6x1,1x1,6"},
+    {"index_l": 13, "type_lesion": "NSCLC", "age": 79, "side": "L", "size_lung": "4,6x3,2x3,9"},
+    {"index_l": 14, "type_lesion": "META-COLORECTAL", "age": 64, "side": "R", "size_lung": "2,1x2x1x5"},
+    {"index_l": 15, "type_lesion": "META-COLORECTAL", "age": 64, "side": "L", "size_lung": "1,4x1,3x1,3"},
+    {"index_l": 16, "type_lesion": "META-COLORECTAL", "age": 64, "side": None, "size_lung": "2,5x2,1x1,5"},
+    {"index_l": 17, "type_lesion": "NSCLC", "age": 69, "side": "L", "size_lung": "3,1x1,8x3"},
+    {"index_l": 18, "type_lesion": "NSCLC", "age": 76, "side": "R", "size_lung": "2,2x2,6x1,8"},
+    {"index_l": 19, "type_lesion": "NSCLC", "age": 75, "side": "R", "size_lung": "2,7x1,6x2,9"},
+    {"index_l": 20, "type_lesion": "NSCLC", "age": 77, "side": "L", "size_lung": "2,2x1,8x1,6"},
+    {"index_l": 21, "type_lesion": "META-COLORECTAL", "age": 74, "side": "R", "size_lung": "4,2x4x3,6"},
+    {"index_l": 22, "type_lesion": "NSCLC", "age": 82, "side": "L", "size_lung": "1,9x1,3x1,5"},
+    {"index_l": 23, "type_lesion": "NSCLC", "age": 82, "side": "R", "size_lung": "1,6x1,9x2,2"},
+    {"index_l": 24, "type_lesion": "META-COLORECTAL", "age": 74, "side": "R", "size_lung": "1x0,9x0,8"},
+    {"index_l": 25, "type_lesion": "NSCLC", "age": 71, "side": "R", "size_lung": "1,4x1,1x1,1"},
+    {"index_l": 26, "type_lesion": "NSCLC", "age": 78, "side": "L", "size_lung": "1,3x1,1x1,2"},
+    {"index_l": 27, "type_lesion": "META-COLORECTAL", "age": 63, "side": "L", "size_lung": "4,5"},
+    {"index_l": 28, "type_lesion": "NSCLC", "age": 51, "side": "L", "size_lung": "1,2x0,8x1"},
+    {"index_l": 29, "type_lesion": "META-COLORECTAL", "age": 63, "side": "R", "size_lung": "4,5"},
+    {"index_l": 30, "type_lesion": "NSCLC", "age": 68, "side": "R", "size_lung": "1,1x1,2x1"},
+    {"index_l": 31, "type_lesion": "NSCLC", "age": 81, "side": "R", "size_lung": "2χ1,2x1,3"},
+    {"index_l": 32, "type_lesion": "NSCLC", "age": 70, "side": "R", "size_lung": "2,1x2x1,7"},
+    {"index_l": 33, "type_lesion": "META-COLORECTAL", "age": None, "side": "R", "size_lung": "1,3x1,3x1,2"},
+    {"index_l": 34, "type_lesion": "META-COLORECTAL", "age": 70, "side": "R", "size_lung": "2,4"},
+    {"index_l": 35, "type_lesion": "META-COLORECTAL", "age": 48, "side": "L", "size_lung": "1,2x1,1x0,9"},
+    {"index_l": 36, "type_lesion": "NSCLC", "age": 78, "side": "R", "size_lung": "1,7x1,7x1,8"},
+    {"index_l": 37, "type_lesion": "NSCLC", "age": 64, "side": "L", "size_lung": "1,5x1x0,8"},
+    {"index_l": 38, "type_lesion": "MESOTHELIOMA", "age": 65, "side": "R", "size_lung": "2x1,4x1,7"},
+    {"index_l": 39, "type_lesion": "NSCLC", "age": 71, "side": "L", "size_lung": "0,8x1x0,8"},
+    {"index_l": 40, "type_lesion": "NSCLC", "age": 83, "side": "R", "size_lung": "1,4x1,8x1,5"},
+    {"index_l": 41, "type_lesion": "NSCLC", "age": 83, "side": "R", "size_lung": "2,2x2,8x2,8"},
+    {"index_l": 42, "type_lesion": "NSCLC", "age": 76, "side": "L", "size_lung": "1,4x0,9x1,3"},
+    {"index_l": 43, "type_lesion": "META-COLORECTAL", "age": 71, "side": "R", "size_lung": "3,7x2,7x2,9"},
+    {"index_l": 44, "type_lesion": "META-COLORECTAL", "age": 73, "side": "R", "size_lung": "2,1x0,8x0,8"},
+    {"index_l": 45, "type_lesion": "NSCLC", "age": 70, "side": "L", "size_lung": "1,3x1,1x1,2"},
+    {"index_l": 46, "type_lesion": "NSCLC", "age": 84, "side": "L", "size_lung": "2,5x1,8x3"},
+    {"index_l": 47, "type_lesion": "NSCLC", "age": 78, "side": "R", "size_lung": "3,2x2,1x2,8"},
+    {"index_l": 48, "type_lesion": "NSCLC", "age": 82, "side": "L", "size_lung": "3,2x2,5x3"},
+    {"index_l": 49, "type_lesion": "META-COLORECTAL", "age": 73, "side": "R", "size_lung": "1,5x1,2x1"},
+    {"index_l": 50, "type_lesion": "META-COLORECTAL", "age": 73, "side": "L", "size_lung": "1,5x1,9x1,8"},
+    {"index_l": 51, "type_lesion": "NSCLC", "age": 73, "side": "L", "size_lung": "1,2x0,8x1,3"},
+    {"index_l": 52, "type_lesion": "NSCLC", "age": 73, "side": "R", "size_lung": "1,3x1,2x1,4"},
+    {"index_l": 53, "type_lesion": "META-COLORECTAL", "age": 73, "side": "R", "size_lung": "0,9x0,9x1 + 0,7x0,7x0,6"},
+    {"index_l": 54, "type_lesion": "NSCLC", "age": 78, "side": "R", "size_lung": "1x0,8x0,6"},
+    {"index_l": 55, "type_lesion": "?", "age": 73, "side": "M", "size_lung": "1,9x1,4x1,8"},
+    {"index_l": 56, "type_lesion": "NSCLC", "age": 73, "side": "R", "size_lung": "1,2x1,5x1"},
+    {"index_l": 57, "type_lesion": "NSCLC", "age": 79, "side": "L", "size_lung": "2,4x1,7x2,1"},
+    {"index_l": 58, "type_lesion": "NSCLC", "age": 69, "side": "R", "size_lung": "2x2x1,8"},
+    {"index_l": 59, "type_lesion": "NSCLC", "age": 81, "side": "R", "size_lung": "3,1x4x3,3"},
+    {"index_l": 60, "type_lesion": "META-COLORECTAL", "age": 73, "side": "R", "size_lung": "3,4X21X16"},
+    {"index_l": 61, "type_lesion": "NSCLC", "age": 72, "side": "L", "size_lung": "1,2Χ1Χ1"},
+    {"index_l": 62, "type_lesion": "NSCLC", "age": 60, "side": "L", "size_lung": "1,1X1,1X1,3"},
+    {"index_l": 63, "type_lesion": "NSCLC", "age": 80, "side": "L", "size_lung": "2x1,3x2,2"},
+    {"index_l": 64, "type_lesion": "META-COLORECTAL", "age": 70, "side": "L", "size_lung": "1,1Χ1,2Χ1,3"},
+    {"index_l": 65, "type_lesion": "NSCLC", "age": 61, "side": "L", "size_lung": "1,7x1x1,7"},
+    {"index_l": 66, "type_lesion": "NSCLC+RCC", "age": 76, "side": "R", "size_lung": "2,4x1,8x1,9"},
+    {"index_l": 67, "type_lesion": "META-RCC", "age": 73, "side": "L", "size_lung": "2,3x2x1,9"},
+    {"index_l": 68, "type_lesion": "NSCLC", "age": 65, "side": "L", "size_lung": "1,1x0,8x0,9"},
+    {"index_l": 69, "type_lesion": "META-COLORECTAL", "age": 82, "side": "R", "size_lung": "3,9x2,4x3,8"},
+    {"index_l": 70, "type_lesion": "META-COLORECTAL", "age": 67, "side": "L", "size_lung": "2x2x2,2"},
+    {"index_l": 71, "type_lesion": "NSCLC", "age": 77, "side": "R", "size_lung": "2x1,8x1,8"},
+    {"index_l": 72, "type_lesion": "NSCLC", "age": 67, "side": "R", "size_lung": "3,1x3,6x2,5"},
+    {"index_l": 73, "type_lesion": "NSCLC", "age": 74, "side": "R", "size_lung": "2,5x1,8x1,4"},
+    {"index_l": 74, "type_lesion": "?", "age": None, "side": None, "size_lung": "1,3x1,1x0,9"},
+    {"index_l": 75, "type_lesion": "NSCLC", "age": 66, "side": "L", "size_lung": "1,9x1,5x1,7"}
 ]
 df_main_lung = pd.DataFrame(lung_main_data)
 
-# Lung cryo data (sample minimal data)
+# Lung cryo data (numbered 1 to 55; use only rows with complete data, here we use a sample)
 lung_cryo_data = [
     {
         "index_l": 1,
@@ -1280,8 +827,8 @@ lung_cryo_data = [
 ]
 df_cryo_lung = pd.DataFrame(lung_cryo_data)
 
-df_main_lung.set_index("number", inplace=True)
-df_cryo_lung.set_index("number", inplace=True)
+df_main_lung.set_index("index_l", inplace=True)
+df_cryo_lung.set_index("index_l", inplace=True)
 df_lung_merged = pd.merge(df_main_lung, df_cryo_lung, left_index=True, right_index=True, how="inner")
 
 #####################################
@@ -1290,7 +837,7 @@ df_lung_merged = pd.merge(df_main_lung, df_cryo_lung, left_index=True, right_ind
 
 def parse_size(s: str):
     """
-    Convert a string like '4,2 x 3,6 x 4,8' to a float list [4.2, 3.6, 4.8].
+    Convert a string like '4,2 x 3,6 x 4,8' to a list of floats [4.2, 3.6, 4.8].
     """
     try:
         s = s.replace(',', '.')
@@ -1299,7 +846,7 @@ def parse_size(s: str):
         if len(floats) == 3:
             return floats
         return None
-    except:
+    except Exception as e:
         return None
 
 def parse_renal_score(rs: str):
@@ -1356,19 +903,17 @@ def side_diff(user_side, ref_side, weight=0.0):
 
 st.title("Cryoablation Probe Calculator")
 
-# Organ selection: Kidney or Lung
+# First, select organ type: Kidney or Lung
 organ_choice = st.sidebar.radio("Select Organ", ["Kidney", "Lung"])
 
 if organ_choice == "Kidney":
     st.sidebar.header("Kidney Input")
-    # Tumor dimensions input
-    k_length = st.sidebar.number_input("Tumor Length (cm)", 0.5, 10.0, 4.2)
-    k_width  = st.sidebar.number_input("Tumor Width (cm)", 0.5, 10.0, 3.6)
-    k_height = st.sidebar.number_input("Tumor Height (cm)", 0.5, 10.0, 4.6)
-    # RENAL Score input
+    st.sidebar.write("Enter tumor dimensions (cm):")
+    k_length = st.sidebar.number_input("Tumor Length", 0.5, 10.0, 4.2)
+    k_width  = st.sidebar.number_input("Tumor Width", 0.5, 10.0, 3.6)
+    k_height = st.sidebar.number_input("Tumor Height", 0.5, 10.0, 4.6)
     user_renal_score = st.sidebar.text_input("RENAL Score (e.g. '5p')", value="5p")
     user_renal_numeric = parse_renal_score(user_renal_score)
-    # Histology selection
     user_histology = st.sidebar.selectbox("Histology", ["Clear Cell", "Papillary", "Chromophobe", "Other"])
     
     if st.sidebar.button("Generate Kidney Plan"):
@@ -1407,14 +952,13 @@ if organ_choice == "Kidney":
 
 elif organ_choice == "Lung":
     st.sidebar.header("Lung Input")
-    # Type of lesion input
     user_type_lesion = st.sidebar.selectbox("Type of Lesion", ["NSCLC", "META-COLORECTAL", "Other"])
     user_age = st.sidebar.number_input("Age (years)", 18, 120, 70)
     user_side = st.sidebar.selectbox("Side", ["R", "L"])
-    # Lesion dimensions input
-    l_length = st.sidebar.number_input("Lesion Length (cm)", 0.5, 10.0, 2.5)
-    l_width  = st.sidebar.number_input("Lesion Width (cm)", 0.5, 10.0, 2.0)
-    l_height = st.sidebar.number_input("Lesion Height (cm)", 0.5, 10.0, 2.1)
+    st.sidebar.write("Enter lesion dimensions (cm):")
+    l_length = st.sidebar.number_input("Lesion Length", 0.5, 10.0, 2.5)
+    l_width  = st.sidebar.number_input("Lesion Width", 0.5, 10.0, 2.0)
+    l_height = st.sidebar.number_input("Lesion Height", 0.5, 10.0, 2.1)
     
     if st.sidebar.button("Generate Lung Plan"):
         user_dims = [l_length, l_width, l_height]
@@ -1443,9 +987,9 @@ elif organ_choice == "Lung":
             st.write(f"**Reference Side:** {match['side']}")
             st.write("---")
             st.subheader("Cryoablation Parameters")
-            st.write(f"**Recommended Cryoprobes:** {match['cryoprobes']}")
-            st.write(f"**Types of Probes:** {match['types_of_probes']}")
-            st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
+            st.write(f"**Recommended Cryoprobes:** {match.get('cryoprobes', 'N/A')}")
+            st.write(f"**Types of Probes:** {match.get('types_of_probes', 'N/A')}")
+            st.write(f"**Estimated Ice Ball Size:** {match.get('size_Ice_ball', 'N/A')} cm")
             st.write(f"**Notes/Additional Info:** {match.get('notes', 'N/A')}")
             st.info(f"Difference Score: {best_total:.2f}")
 
