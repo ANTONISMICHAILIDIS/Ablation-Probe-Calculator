@@ -129,6 +129,10 @@ result_template = """
     <p><strong>Expected Ice-ball Dimensions (cm):</strong> {{ iceball_x }} × {{ iceball_y }} × {{ iceball_z }}</p>
     <p><strong>Hydrodissection:</strong> {{ hydrodissection }}</p>
     <p><strong>Expected Complications:</strong> {{ complications }}</p>
+    <hr>
+    <p><strong>Protocol:</strong> {{ protocol.description }}<br>
+       <em>{{ protocol.technicalParameters }}</em><br>
+       <strong>Total Duration:</strong> {{ protocol.duration }}</p>
   </div>
   <p><a href="/">Back to Input Form</a></p>
 </body>
@@ -138,7 +142,7 @@ result_template = """
 # --- Calculation Functions ---
 
 def calculate_renal_score(radius, exophytic, nearness, pole_rel, artery):
-    # Sum up the points (radius, exophytic, nearness, and location relative to poles)
+    # Sum up the points from the RENAL parameters
     score = int(radius) + int(exophytic) + int(nearness) + int(pole_rel)
     return score
 
@@ -151,10 +155,7 @@ def classify_complexity(renal_score):
         return "High Complexity (RENAL 10-12)"
 
 def recommend_probe_count(max_mass):
-    # A simple rule: 
-    # If maximum dimension <= 3 cm -> 1 probe
-    # >3 and <= 4 -> 2 probes
-    # >4 -> 3 probes
+    # Simple rule: if maximum tumor dimension <= 3 cm -> 1 probe; >3 and <= 4 -> 2 probes; >4 -> 3 probes
     if max_mass <= 3:
         return 1
     elif max_mass <= 4:
@@ -162,43 +163,44 @@ def recommend_probe_count(max_mass):
     else:
         return 3
 
-def predict_iceball_size(probe_type, probe_count, config_type):
-    # Define baseline dimensions for each probe type (in cm)
-    # These are for a single probe (intrinsic iceball produced)
-    baseline = {}
+def predict_iceball_size(probe_type, probe_count):
+    # Baseline dimensions for a single probe
+    # For sphere-type probes:
+    sphere_baseline = {"x": 1.2, "y": 1.8, "z": 2.0}
+    # For rod-type probes:
+    rod_baseline = {"x": 1.4, "y": 2.6, "z": 2.8}
+    # For force-type probes:
+    force_baseline = {"x": 5.0, "y": 4.0, "z": 4.8}
+    
     if probe_type == "sphere":
-        baseline = {"x": 1.2, "y": 1.8, "z": 2.0}  # approximate spherical probe
+        baseline = sphere_baseline
     elif probe_type == "rod":
-        baseline = {"x": 1.4, "y": 2.6, "z": 2.8}  # elliptical probe
+        baseline = rod_baseline
     elif probe_type == "force":
-        baseline = {"x": 5.0, "y": 4.0, "z": 4.8}  # larger ablation, for demonstration
+        baseline = force_baseline
     elif probe_type == "mixed":
-        # For mixed, assume weighted average of 2 rod and 1 sphere
+        # Assume mixed is an average of 2 rod and 1 sphere
         baseline = {
-            "x": (2*1.4 + 1.2)/3,
-            "y": (2*2.6 + 1.8)/3,
-            "z": (2*2.8 + 2.0)/3
+            "x": (2*rod_baseline["x"] + sphere_baseline["x"]) / 3,
+            "y": (2*rod_baseline["y"] + sphere_baseline["y"]) / 3,
+            "z": (2*rod_baseline["z"] + sphere_baseline["z"]) / 3
         }
-    # Define spacing between probes and safety margin (in cm)
-    spacing = 1.0
-    margin = 0.5  # per side (total addition = 1.0 cm)
+    else:
+        baseline = rod_baseline
 
-    # Calculate linear overall dimension for each axis:
-    # overall_axis = probe_count * baseline + (probe_count - 1) * spacing + 2 * margin
+    spacing = 1.0   # inter-probe spacing (cm)
+    margin = 0.5    # safety margin per side (cm)
+    
+    # Calculate overall dimension for each axis:
     overall = {}
     for axis in ["x", "y", "z"]:
         overall[axis] = probe_count * baseline[axis] + (probe_count - 1) * spacing + 2 * margin
 
-    # Adjust for configuration shape
-    # For linear (if probe_count in [1,2]): factor = 1.0
-    # For triangle (3 probes): factor = 0.9
-    # For square (4 probes): factor = 0.85
-    # For pentagon (5): factor = 0.8; for hexagon (6): factor = 0.75
+    # Apply configuration factor based on probe count and assumed arrangement:
     config_factors = {1: 1.0, 2: 1.0, 3: 0.9, 4: 0.85, 5: 0.8, 6: 0.75}
     factor = config_factors.get(probe_count, 1.0)
     overall = {axis: round(val * factor, 1) for axis, val in overall.items()}
-
-    # For our prediction, let the maximum dimension be the "length" (largest among x,y,z)
+    
     max_dimension = max(overall.values())
     return overall["x"], overall["y"], overall["z"], max_dimension
 
@@ -209,7 +211,6 @@ def get_hydrodissection_and_complications(pole):
         return "Recommended", "Standard risk"
 
 def get_protocol(probe_type, probe_count, max_dimension):
-    # A simple rule for protocol details
     if probe_type == "rod":
         freeze_time = 10
     elif probe_type == "sphere":
@@ -219,17 +220,14 @@ def get_protocol(probe_type, probe_count, max_dimension):
     else:
         freeze_time = 10
     return {
-        "description": f"Cryoablation using {probe_count} {probe_type.upper()} probe{'s' if probe_count>1 else ''}.",
-        "technicalParameters": f"Double freeze-thaw cycle; Freeze: {freeze_time} minutes, Thaw: 8 minutes, Freeze: {freeze_time} minutes, Final Thaw: 3 minutes",
+        "description": f"Cryoablation using {probe_count} {probe_type.upper()} probe{'s' if probe_count>1 else ''}",
+        "technicalParameters": f"Double freeze-thaw cycle: Freeze for {freeze_time} minutes, Thaw for 8 minutes, Freeze for {freeze_time} minutes, Final Thaw for 3 minutes",
         "duration": f"Approximately {2*freeze_time + 11} minutes total"
     }
 
-def recommend_probe_configuration(mass_x, mass_y, mass_z, renal_score):
-    # Use the maximum of the mass dimensions to determine probe count
+def recommend_probe_configuration(mass_x, mass_y, mass_z):
     max_mass = max(mass_x, mass_y, mass_z)
-    # A simple rule based on our demo:
-    probe_count = recommend_probe_count(max_mass)
-    return probe_count
+    return recommend_probe_count(max_mass)
 
 # --- Flask Routes ---
 
@@ -240,13 +238,10 @@ def index():
 @app.route("/result", methods=["POST"])
 def result():
     # Get tumor dimensions
-    try:
-        mass_x = float(request.form.get("mass_x"))
-        mass_y = float(request.form.get("mass_y"))
-        mass_z = float(request.form.get("mass_z"))
-    except:
-        mass_x = mass_y = mass_z = 0.0
-
+    mass_x = float(request.form.get("mass_x"))
+    mass_y = float(request.form.get("mass_y"))
+    mass_z = float(request.form.get("mass_z"))
+    
     # RENAL score parameters
     radius = request.form.get("radius")
     exophytic = request.form.get("exophytic")
@@ -255,25 +250,24 @@ def result():
     artery = request.form.get("artery")
     renal_score = calculate_renal_score(radius, exophytic, nearness, pole_rel, artery)
     complexity = classify_complexity(renal_score)
-
+    
     # Additional details
     pole = request.form.get("pole")
     cancer_type = request.form.get("cancer_type")
     probe_type = request.form.get("probe_type")  # "rod", "sphere", "force", "mixed"
     
-    # Recommend probe count based on mass size and renal score
-    recommended_probe_count = recommend_probe_configuration(mass_x, mass_y, mass_z, renal_score)
+    # Recommend probe count based on mass size
+    recommended_probe_count = recommend_probe_configuration(mass_x, mass_y, mass_z)
     
     # Predict iceball size using our model
-    iceball_x, iceball_y, iceball_z, max_dimension = predict_iceball_size(probe_type, recommended_probe_count, config_type="linear")
+    iceball_x, iceball_y, iceball_z, max_dimension = predict_iceball_size(probe_type, recommended_probe_count)
     
-    # Get hydrodissection and complications recommendations based on renal pole
+    # Get hydrodissection and complications based on pole location
     hydrodissection, complications = get_hydrodissection_and_complications(pole)
     
     # Get ablation protocol details
     protocol = get_protocol(probe_type, recommended_probe_count, max_dimension)
     
-    # Build probe configuration string (e.g., "3 ROD" for rod-type)
     probe_configuration = f"{recommended_probe_count} {probe_type.upper()}"
     
     return render_template_string(result_template,
@@ -290,7 +284,9 @@ def result():
                                   iceball_y=iceball_y,
                                   iceball_z=iceball_z,
                                   hydrodissection=hydrodissection,
-                                  complications=complications)
+                                  complications=complications,
+                                  protocol=protocol)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Disable the reloader to avoid the "signal only works in main thread" error.
+    app.run(debug=True, use_reloader=False)
