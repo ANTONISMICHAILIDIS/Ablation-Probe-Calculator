@@ -1,292 +1,248 @@
-from flask import Flask, render_template_string, request
-import math
+import streamlit as st
+import pandas as pd
+import numpy as np
 
-app = Flask(__name__)
+# -------------------------
+# A) Define the Main Table (df_main)
+# -------------------------
+main_data = [
+    {"size_mass": "1,9 x 2,1 x 2,8", "RENAL_score": "7P", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1 x 1,7 x 1,3", "RENAL_score": "6x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,1 x 2,5 x 2,8", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2 x 2,8 x 2,8", "RENAL_score": "4x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1,6 x 1,2 x 1,8", "RENAL_score": "7p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,9 x 2,6 x 2,8", "RENAL_score": "5a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,9 x 2,6 x 3 (1,9 x 2,2 x 3)", "RENAL_score": "6x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,5 x 3,4 x 3,9", "RENAL_score": "4x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,1 x 1,9 x 1,9", "RENAL_score": "5a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,3 x 2 x 2,1", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,9 x 3,3 x 3,1", "RENAL_score": "5x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,6 x 3,5 x 3,7", "RENAL_score": "5x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,6 x 3,8 x 2,8", "RENAL_score": "7ph", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,2 x 3,4 x 3,1", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3 x 2,8 x 2,7", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,8 x 2,4 x 2", "RENAL_score": "6x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1,7 x 1,6 x 1,8", "RENAL_score": "5a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,6 x 2,5 x 2,6", "RENAL_score": "7xh", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "5,8 x 4,3 x 6,2", "RENAL_score": "5x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,9 x 3,2 x 2,6", "RENAL_score": "6x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1,4 x 1,4 x 1,5", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,6 x 2,3 x 2,1", "RENAL_score": "7ph", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2 x 1,8 x 1,9", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,2 x 2,9 x 3,2", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,1 x 2,9 x 2,8", "RENAL_score": "6a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1,9 x 1,6 x 1,6", "RENAL_score": "6x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2 x 2,5 x 2,3", "RENAL_score": "7p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,4 x 2,6 x 2", "RENAL_score": "6a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,6 x 3,7 x 4,3", "RENAL_score": "10a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1,8 x 2 x 2,1", "RENAL_score": "4x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,2 x 2,5 x 2,4", "RENAL_score": "4x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,5 x 2,1 x 2,2", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "19 x 19 x 2,1", "RENAL_score": "4x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,6 x 2,5 x 2,1", "RENAL_score": "4a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "4,6 x 3,8 x 4,8", "RENAL_score": "8x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,6 x 1,9 x 2,2", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "4,2 x 3,6 x 4,6", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,1 x 2,5 x 4,8", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,1 x 3,9 x 3,4", "RENAL_score": "4x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,5 x 2,7 x 2,8", "RENAL_score": "5x", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,4 x 3,5 x 2,9", "RENAL_score": "6p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,7 x 3,5 x 3,4", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "1,7 x 1,9 x 2", "RENAL_score": "5a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,7 x 3,5 x 4", "RENAL_score": "4a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,4 x 2,0 x 2,6", "RENAL_score": "4p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,6 x 2,3 x 2,1", "RENAL_score": "7ah", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,9 x 2,7 x 2,7", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,2 x 2,5 x 3,7", "RENAL_score": "4ah", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,9 x 2,8 x 2,9", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "3,7 x 3,2 x 3,5", "RENAL_score": "5a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2 x 2,2 x 1,9", "RENAL_score": "4a", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2,8 x 2,7 x 2", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"},
+    {"size_mass": "2 x 1 x 2", "RENAL_score": "5p", "BIOPSY": "CLEAR CELL"}
+]
+df_main = pd.DataFrame(main_data)
 
-# --- HTML Templates ---
+# -------------------------
+# B) Define the Cryoablation Results Table (df_cryo)
+# -------------------------
+cryo_data = [
+    {"cryoprobes": "3 rod", "types_of_probes": "ROD", "size_Ice_ball": "2,7x1,9x3,2", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "1", "types_of_probes": "", "size_Ice_ball": "1,4 x 2,6 x 2,8 or 1,7", "protection": "YES/COLON SPLEEN", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "2,8 x 2,7 x 3,5", "protection": "NONE", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "ROD", "size_Ice_ball": "3 x 3,6 x 2", "protection": "NONE", "complications": "PNEUMOTH"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "2,7 x 2,4 x 2,8", "protection": "NONE", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "", "size_Ice_ball": "2,9 x 3 x 4,2", "protection": "YES/SPLEEN", "complications": ""},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3 x 3,8 x 3,4", "protection": "NO", "complications": "MILD HEMORRHAGE?"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "3,8 x 5,2 x 4,9", "protection": "YES/PSOAS", "complications": "none"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3,2 x 3,4 x 3", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "2,7 x 2,4 x 3,2", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "4,2 x 3,6 x 4,1", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "3,8 x 4,2 x 4,9", "protection": "YES/COLON", "complications": "MILD HEMORRHAGE?"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "3,5 x 3,6 x 3,3", "protection": "YES/ COLON", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "3,5 x 3,2 x 3,6", "protection": "YES/ COLON", "complications": "MILD HEMORRHAGE?"},
+    {"cryoprobes": "3", "types_of_probes": "2ROD+1SPHERE", "size_Ice_ball": "3,6 x 2,9 x 3,4", "protection": "NO", "complications": "NONE?"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "2,7 x 3,7 x 3,5", "protection": "YES/COLON", "complications": ""},
+    {"cryoprobes": "1", "types_of_probes": "SPHERE", "size_Ice_ball": "1,2 x 1,8 x 2", "protection": "YES/PSOAS", "complications": ""},
+    {"cryoprobes": "3", "types_of_probes": "4SPHERE", "size_Ice_ball": "3,5 x 3,3 x 3,8", "protection": "COLON/SPLEEN", "complications": "none"},
+    {"cryoprobes": "5", "types_of_probes": "4FORCE+1ROD", "size_Ice_ball": "5,5 x 5,7 x 6,5", "protection": "YES/COLON/SPLEEN", "complications": "none"},
+    {"cryoprobes": "3", "types_of_probes": "ROD", "size_Ice_ball": "3,5 x 4,8 x 4", "protection": "HYDRO/COLON", "complications": "none"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3,1 x 2,9 x 2,7", "protection": "NO", "complications": "MILD HEMORRHAGE"},
+    {"cryoprobes": "3", "types_of_probes": "2ROD+1SPHERE", "size_Ice_ball": "2,6 x 4,4 x 3,5", "protection": "YES/LIVER/COLON", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3,1 x 2,5 x 3", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "3,5 x 4,7 x 5", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "3,2 x 4 x 4", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3 x 2,5 x 2,8", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "2,4 x 3,3 x 3", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "4 x 2,4 x 3,9", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "ROD", "size_Ice_ball": "5,2 x 4 x 4,8", "protection": "YES/SPLEEN", "complications": "MILD HEMORRHAGE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3,7 x 3,3 x 2,8", "protection": "NO", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "2,9 x 3,3 x 2,9", "protection": "YES/PSOAS,RENAL VEIN", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "2,7 x 3,4 x 2,7", "protection": "YES/SPLEEN", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3 x 3,6 x 3,8", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3,1 x 2,7 x 2,4", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "FORCE", "size_Ice_ball": "5,2 x 4,1 x 4,9", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "2,6 x 2,2 x 2,1", "protection": "YES/PSOAS", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "FORCE", "size_Ice_ball": "5,2 x 4,2 x 4,8", "protection": "YES/PSOAS", "complications": "HEMORRHAGE- νοσηλεία"},
+    {"cryoprobes": "3", "types_of_probes": "FORCE", "size_Ice_ball": "", "protection": "", "complications": ""},
+    {"cryoprobes": "4", "types_of_probes": "FORCE", "size_Ice_ball": "5,0 x 3,5 x 5,3", "protection": "YES/COLON, PSOAS", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "FORCE", "size_Ice_ball": "3,5 x 4,1 x 4,3", "protection": "YES/ COLON", "complications": "MILD HEMORRHAGE"},
+    {"cryoprobes": "2", "types_of_probes": "ROD", "size_Ice_ball": "3 x 4,1 x 2,9", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "5,5 x 5,5 x 4,6", "protection": "NO", "complications": "MILD HEMORRHAGE"},
+    {"cryoprobes": "3", "types_of_probes": "ROD", "size_Ice_ball": "4,2 x 3,9 x 5,4", "protection": "YES/ COLON, PSOAS", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "3,4 x 2,6 x 3,1", "protection": "YES/COLON", "complications": "HEMORRHAGE ΜΕΓΑΛΗ"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "3,8 x 5,3 x 6,5", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "ROD", "size_Ice_ball": "3,2 x 3,7 x 3,6", "protection": "YES/PSOAS", "complications": "MILD HEMORRHAGE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "2,8 x 2,8 x 2,9", "protection": "YES/COLON", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "SPHERE", "size_Ice_ball": "4,6 x 3,6 x 3,6", "protection": "YES/LIVER,COLON", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "ROD", "size_Ice_ball": "4,2 x 3,1 x 3,6", "protection": "YES/LIVER,COLON", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "3,6 x 3 x 3,5", "protection": "YES/SPLEEN,COLON", "complications": "NONE"},
+    {"cryoprobes": "4", "types_of_probes": "ROD", "size_Ice_ball": "4,1 x 4 x 5,2", "protection": "YES/COLON", "complications": "SUBCUTANEUS HEMATOMA / MILD HEMORRHAGE"},
+    {"cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "2,7 x 2,9 x 2,6", "protection": "YES/ COLON", "complications": "NONE"},
+    {"cryoprobes": "3", "types_of_probes": "SPHERE", "size_Ice_ball": "4,7 x 3,6 x 3,5", "protection": "YES/ COLON", "complications": "NONE"},
+    {"cryoprobes": "2", "types_of_probes": "SPHERE", "size_Ice_ball": "2,3 x 33 x 2,5", "protection": "YES/ PSOAS", "complications": "NONE"}
+]
+df_cryo = pd.DataFrame(cryo_data)
 
-form_template = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Renal Cryoablation Probe Calculator</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    label { display: block; margin-top: 10px; }
-    input, select { width: 300px; padding: 5px; }
-    .section { margin-bottom: 20px; }
-  </style>
-</head>
-<body>
-  <h1>Renal Cryoablation Probe Calculator</h1>
-  <p>This tool calculates the recommended cryoablation probe configuration and predicts the resulting ice‐ball dimensions based on tumor size, RENAL score, and kidney pole location.</p>
-  <form method="POST" action="/result">
-    <h2>1. Tumor Characteristics</h2>
-    <div class="section">
-      <label for="mass_x">Mass Size X (cm):</label>
-      <input type="number" step="0.1" name="mass_x" id="mass_x" required>
-    </div>
-    <div class="section">
-      <label for="mass_y">Mass Size Y (cm):</label>
-      <input type="number" step="0.1" name="mass_y" id="mass_y" required>
-    </div>
-    <div class="section">
-      <label for="mass_z">Mass Size Z (cm):</label>
-      <input type="number" step="0.1" name="mass_z" id="mass_z" required>
-    </div>
-    <h2>2. RENAL Nephrometry Score Parameters</h2>
-    <div class="section">
-      <label for="radius">Radius (max diameter):</label>
-      <select name="radius" id="radius" required>
-        <option value="1">≤4 cm (1 point)</option>
-        <option value="2">4-7 cm (2 points)</option>
-        <option value="3">≥7 cm (3 points)</option>
-      </select>
-    </div>
-    <div class="section">
-      <label for="exophytic">Exophytic Component:</label>
-      <select name="exophytic" id="exophytic" required>
-        <option value="1">≥50% exophytic (1 point)</option>
-        <option value="2"><50% exophytic (2 points)</option>
-        <option value="3">100% endophytic (3 points)</option>
-      </select>
-    </div>
-    <div class="section">
-      <label for="nearness">Nearness to Collecting System (mm):</label>
-      <select name="nearness" id="nearness" required>
-        <option value="1">≥7 mm (1 point)</option>
-        <option value="2">4-7 mm (2 points)</option>
-        <option value="3">≤4 mm (3 points)</option>
-      </select>
-    </div>
-    <div class="section">
-      <label for="pole_rel">Location Relative to Renal Poles:</label>
-      <select name="pole_rel" id="pole_rel" required>
-        <option value="1">Entirely above/below pole (1 point)</option>
-        <option value="2">Mass crosses the polar line (2 points)</option>
-        <option value="3">>50% crosses polar line/crosses midline (3 points)</option>
-      </select>
-    </div>
-    <div class="section">
-      <label for="artery">Touches Main Renal Vessels?</label>
-      <select name="artery" id="artery" required>
-        <option value="0">No</option>
-        <option value="1">Yes (adds "h" suffix)</option>
-      </select>
-    </div>
-    <h2>3. Additional Details</h2>
-    <div class="section">
-      <label for="pole">Renal Pole (for hydrodissection considerations):</label>
-      <select name="pole" id="pole" required>
-        <option value="upper">Upper Pole</option>
-        <option value="mid">Mid Pole</option>
-        <option value="lower">Lower Pole</option>
-      </select>
-    </div>
-    <div class="section">
-      <label for="cancer_type">Cancer Type (e.g., Clear Cell, Papillary):</label>
-      <input type="text" name="cancer_type" id="cancer_type" required>
-    </div>
-    <div class="section">
-      <label for="probe_type">Preferred Probe Type:</label>
-      <select name="probe_type" id="probe_type" required>
-        <option value="rod">Rod-Type</option>
-        <option value="sphere">Sphere-Type</option>
-        <option value="force">Force-Type</option>
-        <option value="mixed">Mixed (e.g., 2 ROD + 1 SPHERE)</option>
-      </select>
-    </div>
-    <div class="section">
-      <button type="submit">Calculate Prediction</button>
-    </div>
-  </form>
-</body>
-</html>
-"""
+# ------------------------------------
+# Merge the two tables by index (assume rows are aligned)
+# ------------------------------------
+df_main.index.name = "index"
+df_cryo.index.name = "index"
+df_merged = pd.merge(df_main, df_cryo, left_index=True, right_index=True)
 
-result_template = """
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Renal Cryoablation Prediction Result</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .result { margin-top: 20px; padding: 10px; border: 1px solid #ccc; }
-  </style>
-</head>
-<body>
-  <h1>Prediction Result</h1>
-  <div class="result">
-    <p><strong>Calculated RENAL Score:</strong> {{ renal_score }} {% if has_h %}(with "h"){% endif %}</p>
-    <p><strong>Complexity:</strong> {{ complexity }}</p>
-    <p><strong>Mass Size (cm):</strong> {{ mass_x }} × {{ mass_y }} × {{ mass_z }}</p>
-    <p><strong>Renal Pole:</strong> {{ pole }}</p>
-    <p><strong>Cancer Type:</strong> {{ cancer_type }}</p>
-    <hr>
-    <p><strong>Recommended Probe Configuration:</strong> {{ probe_configuration }}</p>
-    <p><strong>Expected Ice-ball Dimensions (cm):</strong> {{ iceball_x }} × {{ iceball_y }} × {{ iceball_z }}</p>
-    <p><strong>Hydrodissection:</strong> {{ hydrodissection }}</p>
-    <p><strong>Expected Complications:</strong> {{ complications }}</p>
-    <hr>
-    <p><strong>Protocol:</strong> {{ protocol.description }}<br>
-       <em>{{ protocol.technicalParameters }}</em><br>
-       <strong>Total Duration:</strong> {{ protocol.duration }}</p>
-  </div>
-  <p><a href="/">Back to Input Form</a></p>
-</body>
-</html>
-"""
+# ------------------------------------
+# Helper function to parse "size_mass" into a numeric array
+# ------------------------------------
+def parse_size(s):
+    try:
+        # Replace commas with dots, split on "x", and convert to floats
+        parts = s.replace(',', '.').split('x')
+        return [float(part.strip()) for part in parts]
+    except Exception as e:
+        return None
 
-# --- Calculation Functions ---
+df_merged["size_parsed"] = df_merged["size_mass"].apply(parse_size)
 
-def calculate_renal_score(radius, exophytic, nearness, pole_rel, artery):
-    # Sum up the points from the RENAL parameters
-    score = int(radius) + int(exophytic) + int(nearness) + int(pole_rel)
-    return score
+# ------------------------------------
+# Streamlit App Interface
+# ------------------------------------
+st.title("Renal Cryoablation Treatment Planner")
+st.markdown("""
+This application matches your tumor characteristics to our reference data and provides a recommended cryoablation plan.
+Enter your tumor parameters in the sidebar.
+""")
 
-def classify_complexity(renal_score):
-    if renal_score <= 6:
-        return "Low Complexity (RENAL 4-6)"
-    elif 7 <= renal_score <= 9:
-        return "Moderate Complexity (RENAL 7-9)"
+# ---------------------------
+# Sidebar: User Input Section
+# ---------------------------
+st.sidebar.header("Enter Tumor Parameters")
+
+# Tumor Size: separate number inputs for length, width, height.
+inp_length = st.sidebar.number_input("Tumor Length (cm)", min_value=0.5, max_value=10.0, value=4.2)
+inp_width  = st.sidebar.number_input("Tumor Width (cm)", min_value=0.5, max_value=10.0, value=3.6)
+inp_height = st.sidebar.number_input("Tumor Height (cm)", min_value=0.5, max_value=10.0, value=4.6)
+inp_size_mass = f"{inp_length} x {inp_width} x {inp_height}"
+
+# RENAL Score: numeric part and suffix.
+inp_renal_numeric = st.sidebar.number_input("RENAL Score (numeric)", min_value=1, max_value=12, value=5)
+inp_renal_suffix = st.sidebar.selectbox("RENAL Score Suffix", options=["a", "p", "x"], index=1)
+inp_renal_score = f"{inp_renal_numeric}{inp_renal_suffix}"
+
+# Histology Type (Biopsy Type) - Cancer grade is removed.
+histology_options = ["CLEAR CELL", "PAPILLARY", "CHROMOPHOBE"]
+inp_histology = st.sidebar.selectbox("Histology Type", options=histology_options, index=0)
+
+# Display user input for confirmation
+st.sidebar.markdown("### Your Input:")
+st.sidebar.write(f"**Tumor Size (Mass):** {inp_size_mass} cm")
+st.sidebar.write(f"**RENAL Score:** {inp_renal_score}")
+st.sidebar.write(f"**Histology Type:** {inp_histology}")
+
+# ------------------------------------
+# Matching Algorithm: Find the closest reference row (based on tumor dimensions and RENAL score, filtered by histology type)
+# ------------------------------------
+if st.sidebar.button("Generate Cryoablation Plan"):
+    # Filter the merged dataframe by histology type (case-insensitive substring match)
+    df_filtered = df_merged[
+        df_merged["BIOPSY"].str.strip().str.lower().str.contains(inp_histology.strip().lower())
+    ]
+    
+    if df_filtered.empty:
+        st.error("No matching data found for the given Histology Type. Please check your inputs.")
     else:
-        return "High Complexity (RENAL 10-12)"
+        # Helper: extract numeric value from RENAL score (e.g., "5p" -> 5)
+        def extract_numeric_from_score(s):
+            try:
+                return float(''.join(ch for ch in s if ch.isdigit() or ch == '.'))
+            except:
+                return np.nan
+        
+        # User tumor dimensions as a sorted numpy array and mean
+        user_dims = np.array([inp_length, inp_width, inp_height])
+        user_sorted = np.sort(user_dims)
+        user_mean = np.mean(user_dims)
+        user_renal_numeric = float(inp_renal_numeric)
+        
+        best_idx = None
+        best_diff = float("inf")
+        
+        # Iterate over filtered rows and compute a weighted difference metric
+        for idx, row in df_filtered.iterrows():
+            parsed = row["size_parsed"]
+            if parsed is None or len(parsed) != 3:
+                continue
+            ref_dims = np.array(parsed)
+            ref_sorted = np.sort(ref_dims)
+            ref_mean = np.mean(ref_dims)
+            ref_renal = extract_numeric_from_score(row["RENAL_score"])
+            
+            # Compute difference metric:
+            #   - 2x the difference in mean dimensions
+            #   - Sum of absolute differences in each sorted dimension
+            #   - Absolute difference in the RENAL numeric score
+            diff = abs(ref_mean - user_mean)*2 + np.sum(np.abs(ref_sorted - user_sorted)) + abs(ref_renal - user_renal_numeric)
+            
+            if diff < best_diff:
+                best_diff = diff
+                best_idx = idx
+        
+        if best_idx is None:
+            st.error("No matching data found. Please verify your tumor size or RENAL score.")
+        else:
+            match = df_filtered.loc[best_idx]
+            st.header("Recommended Cryoablation Plan")
+            st.subheader("Matched Reference Parameters")
+            st.write(f"**Tumor Size (Mass):** {match['size_mass']} cm")
+            st.write(f"**RENAL Score:** {match['RENAL_score']}")
+            st.write(f"**Histology Type:** {match['BIOPSY']}")
+            st.markdown("---")
+            st.subheader("Cryoablation Parameters")
+            st.write(f"**Cryoprobes:** {match['cryoprobes']}")
+            st.write(f"**Types of Probes:** {match['types_of_probes']}")
+            st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
+            st.write(f"**Protection:** {match['protection']}")
+            st.write(f"**Complications:** {match['complications']}")
+            st.info(f"Matching difference metric: {best_diff:.2f}")
 
-def recommend_probe_count(max_mass):
-    # Simple rule: if maximum tumor dimension <= 3 cm -> 1 probe; >3 and <= 4 -> 2 probes; >4 -> 3 probes
-    if max_mass <= 3:
-        return 1
-    elif max_mass <= 4:
-        return 2
-    else:
-        return 3
-
-def predict_iceball_size(probe_type, probe_count):
-    # Baseline dimensions for a single probe
-    # For sphere-type probes:
-    sphere_baseline = {"x": 1.2, "y": 1.8, "z": 2.0}
-    # For rod-type probes:
-    rod_baseline = {"x": 1.4, "y": 2.6, "z": 2.8}
-    # For force-type probes:
-    force_baseline = {"x": 5.0, "y": 4.0, "z": 4.8}
-    
-    if probe_type == "sphere":
-        baseline = sphere_baseline
-    elif probe_type == "rod":
-        baseline = rod_baseline
-    elif probe_type == "force":
-        baseline = force_baseline
-    elif probe_type == "mixed":
-        # Assume mixed is an average of 2 rod and 1 sphere
-        baseline = {
-            "x": (2*rod_baseline["x"] + sphere_baseline["x"]) / 3,
-            "y": (2*rod_baseline["y"] + sphere_baseline["y"]) / 3,
-            "z": (2*rod_baseline["z"] + sphere_baseline["z"]) / 3
-        }
-    else:
-        baseline = rod_baseline
-
-    spacing = 1.0   # inter-probe spacing (cm)
-    margin = 0.5    # safety margin per side (cm)
-    
-    # Calculate overall dimension for each axis:
-    overall = {}
-    for axis in ["x", "y", "z"]:
-        overall[axis] = probe_count * baseline[axis] + (probe_count - 1) * spacing + 2 * margin
-
-    # Apply configuration factor based on probe count and assumed arrangement:
-    config_factors = {1: 1.0, 2: 1.0, 3: 0.9, 4: 0.85, 5: 0.8, 6: 0.75}
-    factor = config_factors.get(probe_count, 1.0)
-    overall = {axis: round(val * factor, 1) for axis, val in overall.items()}
-    
-    max_dimension = max(overall.values())
-    return overall["x"], overall["y"], overall["z"], max_dimension
-
-def get_hydrodissection_and_complications(pole):
-    if pole.lower() == "upper":
-        return "Not possible", "High risk: Pneumothorax"
-    else:
-        return "Recommended", "Standard risk"
-
-def get_protocol(probe_type, probe_count, max_dimension):
-    if probe_type == "rod":
-        freeze_time = 10
-    elif probe_type == "sphere":
-        freeze_time = 8
-    elif probe_type == "force":
-        freeze_time = 12
-    else:
-        freeze_time = 10
-    return {
-        "description": f"Cryoablation using {probe_count} {probe_type.upper()} probe{'s' if probe_count>1 else ''}",
-        "technicalParameters": f"Double freeze-thaw cycle: Freeze for {freeze_time} minutes, Thaw for 8 minutes, Freeze for {freeze_time} minutes, Final Thaw for 3 minutes",
-        "duration": f"Approximately {2*freeze_time + 11} minutes total"
-    }
-
-def recommend_probe_configuration(mass_x, mass_y, mass_z):
-    max_mass = max(mass_x, mass_y, mass_z)
-    return recommend_probe_count(max_mass)
-
-# --- Flask Routes ---
-
-@app.route("/", methods=["GET"])
-def index():
-    return render_template_string(form_template)
-
-@app.route("/result", methods=["POST"])
-def result():
-    # Get tumor dimensions
-    mass_x = float(request.form.get("mass_x"))
-    mass_y = float(request.form.get("mass_y"))
-    mass_z = float(request.form.get("mass_z"))
-    
-    # RENAL score parameters
-    radius = request.form.get("radius")
-    exophytic = request.form.get("exophytic")
-    nearness = request.form.get("nearness")
-    pole_rel = request.form.get("pole_rel")
-    artery = request.form.get("artery")
-    renal_score = calculate_renal_score(radius, exophytic, nearness, pole_rel, artery)
-    complexity = classify_complexity(renal_score)
-    
-    # Additional details
-    pole = request.form.get("pole")
-    cancer_type = request.form.get("cancer_type")
-    probe_type = request.form.get("probe_type")  # "rod", "sphere", "force", "mixed"
-    
-    # Recommend probe count based on mass size
-    recommended_probe_count = recommend_probe_configuration(mass_x, mass_y, mass_z)
-    
-    # Predict iceball size using our model
-    iceball_x, iceball_y, iceball_z, max_dimension = predict_iceball_size(probe_type, recommended_probe_count)
-    
-    # Get hydrodissection and complications based on pole location
-    hydrodissection, complications = get_hydrodissection_and_complications(pole)
-    
-    # Get ablation protocol details
-    protocol = get_protocol(probe_type, recommended_probe_count, max_dimension)
-    
-    probe_configuration = f"{recommended_probe_count} {probe_type.upper()}"
-    
-    return render_template_string(result_template,
-                                  renal_score=renal_score,
-                                  has_h="Yes" if artery=="1" else "No",
-                                  complexity=complexity,
-                                  mass_x=mass_x,
-                                  mass_y=mass_y,
-                                  mass_z=mass_z,
-                                  pole=pole,
-                                  cancer_type=cancer_type,
-                                  probe_configuration=probe_configuration,
-                                  iceball_x=iceball_x,
-                                  iceball_y=iceball_y,
-                                  iceball_z=iceball_z,
-                                  hydrodissection=hydrodissection,
-                                  complications=complications,
-                                  protocol=protocol)
-
-if __name__ == "__main__":
-    # Disable the reloader to avoid the "signal only works in main thread" error.
-    app.run(debug=True, use_reloader=False)
+st.markdown("---")
+st.write("Created by Michailidis A. for free use (demo).")
