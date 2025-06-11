@@ -827,19 +827,14 @@ lung_cryo_data = [
 ]
 df_cryo_lung = pd.DataFrame(lung_cryo_data)
 
-# Derive number of cryoprobes from the description when explicit counts are not
-# available. Many rows in the lung dataset include phrases like '2 SPHERE+2 ROD'
-# describing the used probes. This helper extracts all numbers from that string
-# and returns their sum so the app can display a numeric recommendation.
+# Helper to extract number of cryoprobes (e.g., '2 SPHERE+2 ROD' -> 4, 'SPHERE' -> 1)
 def parse_cryoprobes(probe_str: str):
     """Infer how many probes were used from a textual description."""
     if not probe_str or not isinstance(probe_str, str):
         return None
-
     nums = re.findall(r"\d+", probe_str)
     if nums:
         return sum(int(n) for n in nums)
-
     # If no explicit number is present but probe type exists, assume one probe
     if re.search(r"(sphere|rod)", probe_str.lower()):
         return 1
@@ -856,9 +851,7 @@ df_lung_merged = pd.merge(df_main_lung, df_cryo_lung, left_index=True, right_ind
 #####################################
 
 def parse_size(s: str):
-    """
-    Convert a string like '4,2 x 3,6 x 4,8' to a list of floats [4.2, 3.6, 4.8].
-    """
+    """Convert a string like '4,2 x 3,6 x 4,8' to a list of floats [4.2, 3.6, 4.8]."""
     if not s:
         return None
     try:
@@ -872,9 +865,6 @@ def parse_size(s: str):
         return None
 
 def parse_renal_score(rs: str):
-    """
-    Extract numeric portion from a RENAL score string (e.g., '5p' -> 5).
-    """
     """Extract the numeric portion from a RENAL score string (e.g., '5p')."""
     match = re.search(r'(\d+)', rs)
     if match:
@@ -882,9 +872,6 @@ def parse_renal_score(rs: str):
     return None
 
 def size_difference(user_dims, ref_dims, weight=5.0):
-    """
-    Calculate weighted difference in tumor size.
-    """
     """Calculate weighted difference in tumor size."""
     user_sorted = np.sort(user_dims)
     ref_sorted = np.sort(ref_dims)
@@ -892,27 +879,18 @@ def size_difference(user_dims, ref_dims, weight=5.0):
     return weight * diff
 
 def renal_score_difference(user_score, ref_score, weight=2.0):
-    """
-    Weighted difference for RENAL score.
-    """
     """Weighted difference for RENAL score."""
     if user_score is None or ref_score is None:
         return 0.0
     return weight * abs(user_score - ref_score)
 
 def histology_difference(user_hist, ref_hist, weight=1.0):
-    """
-    Weighted difference for histology type.
-    """
     """Weighted difference for histology type."""
     if not user_hist or not ref_hist:
         return weight
     return 0.0 if user_hist.lower() == ref_hist.lower() else weight
 
 def type_lesion_diff(user_type, ref_type, weight=3.0):
-    """
-    Weighted difference for lung lesion type.
-    """
     """Weighted difference for lung lesion type."""
     if not user_type or not ref_type:
         return weight
@@ -925,9 +903,6 @@ def age_difference(user_age, ref_age, weight=1.0):
     return weight * abs(user_age - ref_age) / 10.0
 
 def side_diff(user_side, ref_side, weight=0.0):
-    """
-    Side difference (no penalty).
-    """
     """Side difference (no penalty)."""
     return 0.0
 
@@ -1022,10 +997,16 @@ elif organ_choice == "Lung":
             st.write(f"**Reference Side:** {match['side']}")
             st.write("---")
             st.subheader("Cryoablation Parameters")
-            cryo_val = match.get('cryoprobes')
-            cryo_display = "N/A" if cryo_val is None or pd.isna(cryo_val) else int(cryo_val)
-            st.write(f"**Recommended Cryoprobes:** {cryo_display}")
-            st.write(f"**Types of Probes:** {match.get('types_of_probes', 'N/A')}")
+            # Always show the probe description
+            probe_count = match.get('cryoprobes')
+            probe_descr = match.get('types_of_probes', 'N/A')
+            # Choose what to display for cryoprobes: best is parsed count + description if available
+            if probe_count is not None and not pd.isna(probe_count):
+                st.write(f"**Recommended Cryoprobes:** {probe_count} ({probe_descr})")
+            elif probe_descr and probe_descr != 'N/A':
+                st.write(f"**Recommended Cryoprobes:** {probe_descr}")
+            else:
+                st.write(f"**Recommended Cryoprobes:** N/A")
             st.write(f"**Estimated Ice Ball Size:** {match.get('size_Ice_ball', 'N/A')} cm")
             st.write(f"**Notes/Additional Info:** {match.get('notes', 'N/A')}")
             st.info(f"Difference Score: {best_total:.2f}")
