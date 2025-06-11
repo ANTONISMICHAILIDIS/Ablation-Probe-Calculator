@@ -954,7 +954,7 @@ if organ_choice == "Kidney":
         user_dims = [k_length, k_width, k_height]
         best_idx = None
         best_total = float("inf")
-@@ -948,50 +967,54 @@ if organ_choice == "Kidney":
+ if organ_choice == "Kidney":
             st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
             st.write(f"**Protection:** {match['protection']}")
             st.write(f"**Complications:** {match['complications']}")
