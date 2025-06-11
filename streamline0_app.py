@@ -954,7 +954,30 @@ if organ_choice == "Kidney":
         user_dims = [k_length, k_width, k_height]
         best_idx = None
         best_total = float("inf")
- if organ_choice == "Kidney":
+        # Find the best match
+        for idx, row in df_kidney_merged.iterrows():
+            ref_dims = parse_size(row["size_mass"])
+            ref_renal = parse_renal_score(row["RENAL_score"])
+            ref_hist = row["histology"]
+            diff_size = size_difference(user_dims, ref_dims, weight=5.0)
+            diff_renal = renal_score_difference(user_renal_numeric, ref_renal, weight=2.0)
+            diff_hist = histology_difference(user_histology, ref_hist, weight=1.0)
+            total_diff = diff_size + diff_renal + diff_hist
+            if total_diff < best_total:
+                best_total = total_diff
+                best_idx = idx
+        if best_idx is None:
+            st.error("No matching kidney reference data found.")
+        else:
+            match = df_kidney_merged.loc[best_idx]
+            st.subheader("Kidney Cryoablation Plan")
+            st.write(f"**Reference Tumor Size:** {match['size_mass']} cm")
+            st.write(f"**RENAL Score:** {match['RENAL_score']}")
+            st.write(f"**Histology:** {match['histology']}")
+            st.write("---")
+            st.subheader("Cryoablation Parameters")
+            st.write(f"**Recommended Cryoprobes:** {match['cryoprobes']}")
+            st.write(f"**Types of Probes:** {match['types_of_probes']}")
             st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
             st.write(f"**Protection:** {match['protection']}")
             st.write(f"**Complications:** {match['complications']}")
@@ -984,7 +1007,6 @@ elif organ_choice == "Lung":
             diff_size = size_difference(user_dims, ref_dims, weight=5.0)
             diff_type = type_lesion_diff(user_type_lesion, ref_type, weight=3.0)
             diff_side = side_diff(user_side, ref_side, weight=0.0)
-            total_diff = diff_size + diff_type + diff_side
             diff_age = age_difference(user_age, ref_age, weight=1.0)
             total_diff = diff_size + diff_type + diff_side + diff_age
             if total_diff < best_total:
@@ -1000,7 +1022,6 @@ elif organ_choice == "Lung":
             st.write(f"**Reference Side:** {match['side']}")
             st.write("---")
             st.subheader("Cryoablation Parameters")
-            st.write(f"**Recommended Cryoprobes:** {match.get('cryoprobes', 'N/A')}")
             cryo_val = match.get('cryoprobes')
             cryo_display = "N/A" if cryo_val is None or pd.isna(cryo_val) else int(cryo_val)
             st.write(f"**Recommended Cryoprobes:** {cryo_display}")
