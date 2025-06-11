@@ -859,31 +859,17 @@ def parse_size(s: str):
     """
     Convert a string like '4,2 x 3,6 x 4,8' to a list of floats [4.2, 3.6, 4.8].
     """
-    try:
-        s = s.replace(',', '.')
-        parts = s.lower().replace('x', ' ').split()
-        floats = [float(x.strip()) for x in parts if x.strip() != ""]
-        if len(floats) == 3:
-            return floats
-        return None
-    except Exception as e:
-    """Return a list of up to three floats parsed from a dimension string."""
     if not s:
         return None
     try:
-        cleaned = s
-        # Normalise separators and decimal marks
-        cleaned = cleaned.replace("χ", "x").replace("Χ", "x")
-        cleaned = cleaned.replace(",", ".")
-        # Remove any characters that are not digits, decimal point or 'x'
+        cleaned = s.replace("χ", "x").replace("Χ", "x").replace(",", ".")
         cleaned = re.sub(r"[^0-9.x]", " ", cleaned.lower())
         parts = cleaned.replace("x", " ").split()
         floats = [float(p) for p in parts if p]
         if len(floats) >= 3:
             return floats[:3]
     except Exception:
-        pass
-    return None
+        return None
 
 def parse_renal_score(rs: str):
     """
