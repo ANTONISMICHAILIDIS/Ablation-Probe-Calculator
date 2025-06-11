@@ -825,7 +825,25 @@ lung_cryo_data = [
         "notes": None
     }
 ]
-df_cryo_lung = pd.DataFrame(lung_cryo_data)
+# Derive number of cryoprobes from the description when explicit counts are not
+# available. Many rows in the lung dataset include phrases like '2 SPHERE+2 ROD'
+# describing the used probes. This helper extracts all numbers from that string
+# and returns their sum so the app can display a numeric recommendation.
+def parse_cryoprobes(probe_str: str):
+    """Infer how many probes were used from a textual description."""
+    if not probe_str or not isinstance(probe_str, str):
+        return None
+
+    nums = re.findall(r"\d+", probe_str)
+    if nums:
+        return sum(int(n) for n in nums)
+
+    # If no explicit number is present but probe type exists, assume one probe
+    if re.search(r"(sphere|rod)", probe_str.lower()):
+        return 1
+    return None
+
+df_cryo_lung["cryoprobes"] = df_cryo_lung["types_of_probes"].apply(parse_cryoprobes)
 
 df_main_lung.set_index("index_l", inplace=True)
 df_cryo_lung.set_index("index_l", inplace=True)
@@ -836,6 +854,12 @@ df_lung_merged = pd.merge(df_main_lung, df_cryo_lung, left_index=True, right_ind
 #####################################
 
 def parse_size(s: str):
+    """Parse dimension strings into three floats.
+
+    The source data contains several inconsistencies such as the use of
+    Greek characters ("χ"/"Χ"), stray text and occasionally more than three
+    numbers. This helper tries to sanitise those strings so that a best
+    effort numerical comparison can be made.
     """
     Convert a string like '4,2 x 3,6 x 4,8' to a list of floats [4.2, 3.6, 4.8].
     """
@@ -847,7 +871,22 @@ def parse_size(s: str):
             return floats
         return None
     except Exception as e:
+    if not s:
         return None
+    try:
+        cleaned = s
+        # Normalise separators and decimal marks
+        cleaned = cleaned.replace("χ", "x").replace("Χ", "x")
+        cleaned = cleaned.replace(",", ".")
+        # Remove any characters that are not digits, decimal point or 'x'
+        cleaned = re.sub(r"[^0-9.x]", " ", cleaned.lower())
+        parts = cleaned.replace("x", " ").split()
+        floats = [float(p) for p in parts if p]
+        if len(floats) >= 3:
+            return floats[:3]
+    except Exception:
+        pass
+    return None
 
 def parse_renal_score(rs: str):
     """
@@ -891,6 +930,12 @@ def type_lesion_diff(user_type, ref_type, weight=3.0):
         return weight
     return 0.0 if user_type.lower() == ref_type.lower() else weight
 
+def age_difference(user_age, ref_age, weight=1.0):
+    """Weighted age difference for lung cases."""
+    if user_age is None or ref_age is None:
+        return weight
+    return weight * abs(user_age - ref_age) / 10.0
+
 def side_diff(user_side, ref_side, weight=0.0):
     """
     Side difference (no penalty).
@@ -916,35 +961,7 @@ if organ_choice == "Kidney":
     user_renal_numeric = parse_renal_score(user_renal_score)
     user_histology = st.sidebar.selectbox("Histology", ["Clear Cell", "Papillary", "Chromophobe", "Other"])
     
-    if st.sidebar.button("Generate Kidney Plan"):
-        user_dims = [k_length, k_width, k_height]
-        best_idx = None
-        best_total = float("inf")
-        for idx, row in df_kidney_merged.iterrows():
-            ref_dims = parse_size(row["size_mass"])
-            if not ref_dims:
-                continue
-            ref_renal = parse_renal_score(row["RENAL_score"])
-            ref_hist = row["histology"]
-            diff_size = size_difference(user_dims, ref_dims, weight=5.0)
-            diff_renal = renal_score_difference(user_renal_numeric, ref_renal, weight=2.0)
-            diff_hist = histology_difference(user_histology, ref_hist, weight=1.0)
-            total_diff = diff_size + diff_renal + diff_hist
-            if total_diff < best_total:
-                best_total = total_diff
-                best_idx = idx
-        if best_idx is None:
-            st.error("No matching kidney reference data found.")
-        else:
-            match = df_kidney_merged.loc[best_idx]
-            st.subheader("Kidney Cryoablation Plan")
-            st.write(f"**Reference Tumor Size:** {match['size_mass']} cm")
-            st.write(f"**Reference RENAL Score:** {match['RENAL_score']}")
-            st.write(f"**Reference Histology:** {match['histology']}")
-            st.write("---")
-            st.subheader("Cryoablation Parameters")
-            st.write(f"**Recommended Cryoprobes:** {match['cryoprobes']}")
-            st.write(f"**Types of Probes:** {match['types_of_probes']}")
+@@ -948,50 +985,54 @@ if organ_choice == "Kidney":
             st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
             st.write(f"**Protection:** {match['protection']}")
             st.write(f"**Complications:** {match['complications']}")
@@ -970,10 +987,13 @@ elif organ_choice == "Lung":
                 continue
             ref_type = row["type_lesion"]
             ref_side = row["side"]
+            ref_age = row["age"]
             diff_size = size_difference(user_dims, ref_dims, weight=5.0)
             diff_type = type_lesion_diff(user_type_lesion, ref_type, weight=3.0)
             diff_side = side_diff(user_side, ref_side, weight=0.0)
             total_diff = diff_size + diff_type + diff_side
+            diff_age = age_difference(user_age, ref_age, weight=1.0)
+            total_diff = diff_size + diff_type + diff_side + diff_age
             if total_diff < best_total:
                 best_total = total_diff
                 best_idx = idx
@@ -988,6 +1008,9 @@ elif organ_choice == "Lung":
             st.write("---")
             st.subheader("Cryoablation Parameters")
             st.write(f"**Recommended Cryoprobes:** {match.get('cryoprobes', 'N/A')}")
+            cryo_val = match.get('cryoprobes')
+            cryo_display = "N/A" if cryo_val is None or pd.isna(cryo_val) else int(cryo_val)
+            st.write(f"**Recommended Cryoprobes:** {cryo_display}")
             st.write(f"**Types of Probes:** {match.get('types_of_probes', 'N/A')}")
             st.write(f"**Estimated Ice Ball Size:** {match.get('size_Ice_ball', 'N/A')} cm")
             st.write(f"**Notes/Additional Info:** {match.get('notes', 'N/A')}")
