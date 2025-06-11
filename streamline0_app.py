@@ -825,6 +825,8 @@ lung_cryo_data = [
         "notes": None
     }
 ]
+df_cryo_lung = pd.DataFrame(lung_cryo_data)
+
 # Derive number of cryoprobes from the description when explicit counts are not
 # available. Many rows in the lung dataset include phrases like '2 SPHERE+2 ROD'
 # describing the used probes. This helper extracts all numbers from that string
@@ -854,12 +856,6 @@ df_lung_merged = pd.merge(df_main_lung, df_cryo_lung, left_index=True, right_ind
 #####################################
 
 def parse_size(s: str):
-    """Parse dimension strings into three floats.
-
-    The source data contains several inconsistencies such as the use of
-    Greek characters ("χ"/"Χ"), stray text and occasionally more than three
-    numbers. This helper tries to sanitise those strings so that a best
-    effort numerical comparison can be made.
     """
     Convert a string like '4,2 x 3,6 x 4,8' to a list of floats [4.2, 3.6, 4.8].
     """
@@ -871,6 +867,7 @@ def parse_size(s: str):
             return floats
         return None
     except Exception as e:
+    """Return a list of up to three floats parsed from a dimension string."""
     if not s:
         return None
     try:
@@ -892,6 +889,7 @@ def parse_renal_score(rs: str):
     """
     Extract numeric portion from a RENAL score string (e.g., '5p' -> 5).
     """
+    """Extract the numeric portion from a RENAL score string (e.g., '5p')."""
     match = re.search(r'(\d+)', rs)
     if match:
         return int(match.group(1))
@@ -901,6 +899,7 @@ def size_difference(user_dims, ref_dims, weight=5.0):
     """
     Calculate weighted difference in tumor size.
     """
+    """Calculate weighted difference in tumor size."""
     user_sorted = np.sort(user_dims)
     ref_sorted = np.sort(ref_dims)
     diff = np.sum(np.abs(user_sorted - ref_sorted))
@@ -910,6 +909,7 @@ def renal_score_difference(user_score, ref_score, weight=2.0):
     """
     Weighted difference for RENAL score.
     """
+    """Weighted difference for RENAL score."""
     if user_score is None or ref_score is None:
         return 0.0
     return weight * abs(user_score - ref_score)
@@ -918,6 +918,7 @@ def histology_difference(user_hist, ref_hist, weight=1.0):
     """
     Weighted difference for histology type.
     """
+    """Weighted difference for histology type."""
     if not user_hist or not ref_hist:
         return weight
     return 0.0 if user_hist.lower() == ref_hist.lower() else weight
@@ -926,6 +927,7 @@ def type_lesion_diff(user_type, ref_type, weight=3.0):
     """
     Weighted difference for lung lesion type.
     """
+    """Weighted difference for lung lesion type."""
     if not user_type or not ref_type:
         return weight
     return 0.0 if user_type.lower() == ref_type.lower() else weight
@@ -940,6 +942,7 @@ def side_diff(user_side, ref_side, weight=0.0):
     """
     Side difference (no penalty).
     """
+    """Side difference (no penalty)."""
     return 0.0
 
 #####################################
@@ -961,7 +964,11 @@ if organ_choice == "Kidney":
     user_renal_numeric = parse_renal_score(user_renal_score)
     user_histology = st.sidebar.selectbox("Histology", ["Clear Cell", "Papillary", "Chromophobe", "Other"])
     
-@@ -948,50 +985,54 @@ if organ_choice == "Kidney":
+    if st.sidebar.button("Generate Kidney Plan"):
+        user_dims = [k_length, k_width, k_height]
+        best_idx = None
+        best_total = float("inf")
+@@ -948,50 +967,54 @@ if organ_choice == "Kidney":
             st.write(f"**Estimated Ice Ball Size:** {match['size_Ice_ball']} cm")
             st.write(f"**Protection:** {match['protection']}")
             st.write(f"**Complications:** {match['complications']}")
